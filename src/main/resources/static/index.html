@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PropertyPrep · Payments</title>
+    <!-- Load Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #f1f5f9; padding: 20px; }
+        .card { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 900px; margin: auto; }
+        .hidden { display: none !important; }
+        button { background: #3b82f6; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin: 5px 0; }
+        button:hover { background: #2563eb; }
+        input, select { padding: 8px; margin: 5px 0; width: 100%; border: 1px solid #ddd; border-radius: 6px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .data-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px; }
+        pre { background: #1e293b; color: #fff; padding: 10px; border-radius: 6px; overflow-x: auto; }
+        h1, h2, h3 { color: #0f172a; }
+        .section-title { border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px; }
+        .btn-success { background: #10b981; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: #ef4444; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>🏠 PropertyPrep</h1>
+    <div id="loginSection">
+        <h3>🔐 Login</h3>
+        <input type="text" id="loginUser" placeholder="Username (e.g. admin)" value="admin">
+        <input type="password" id="loginPass" placeholder="Password" value="admin123">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <div id="dashboards" class="hidden">
+        <h3 id="roleBadge" style="color:#3b82f6;">Role: </h3>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="hidden">
+            <div class="section-title"><h3>👑 Admin Panel</h3></div>
+            <button onclick="fetchManagers()">View All Managers</button>
+            <button onclick="fetchVacant()">View Vacant Properties</button>
+            <div id="adminData" class="data-box"></div>
+        </div>
+
+        <!-- Manager Panel -->
+        <div id="managerPanel" class="hidden">
+            <div class="section-title"><h3>📋 Manager Panel</h3></div>
+            <button onclick="fetchMyProps()">View My Properties</button>
+            <button onclick="fetchMyTenants()">View My Tenants</button>
+            <div class="grid">
+                <div>
+                    <h4>Add Property</h4>
+                    <input id="propAddr" placeholder="Address">
+                    <input id="propCity" placeholder="City">
+                    <input id="propRent" placeholder="Monthly Rent">
+                    <button onclick="addProperty()">Add Property</button>
+                </div>
+                <div>
+                    <h4>Add Tenant</h4>
+                    <input id="newTenantUser" placeholder="Username">
+                    <input id="newTenantPass" placeholder="Password" type="password">
+                    <input id="newTenantEmail" placeholder="Email">
+                    <button onclick="addTenant()">Create Tenant</button>
+                </div>
+            </div>
+            <div style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:15px;">
+                <h4>🔗 Assign a Lease</h4>
+                <input id="assignTenantId" placeholder="Tenant ID (e.g. 2)">
+                <input id="assignPropId" placeholder="Property ID (e.g. 1)">
+                <button onclick="assignLease()">Move Tenant into Property</button>
+            </div>
+            <div id="managerData" class="data-box"></div>
+        </div>
+
+        <!-- Tenant Panel -->
+        <div id="tenantPanel" class="hidden">
+            <div class="section-title"><h3>👤 Tenant Panel</h3></div>
+            <button onclick="fetchMyDashboard()">My Dashboard</button>
+            <br>
+            <button class="btn-success" onclick="payWithStripe()">💳 Pay with Stripe</button>
+            <button class="btn-success" onclick="payWithMpesa()">📱 Pay with M-Pesa</button>
+            <div id="paymentStatus" style="margin-top:10px; font-weight:bold; color: #166534;"></div>
+            <div id="tenantData" class="data-box"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = 'http://localhost:8081/api';
+    const STRIPE_PUBLISHABLE_KEY = 'pk_test_51...'; // Replace with your Stripe Publishable Key from Stripe Dashboard
+    let user, pass;
+    let stripeInstance = null;
+
+    async function login() {
+        user = document.getElementById('loginUser').value;
+        pass = document.getElementById('loginPass').value;
+        try {
+            const res = await fetch(`${API}/auth/me`, {
+                headers: { 'Authorization': 'Basic ' + btoa(user + ':' + pass) }
+            });
+            if (res.status === 401 || res.status === 403) throw new Error('Invalid credentials');
+            const data = await res.json();
+            const role = data.role;
+
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('dashboards').classList.remove('hidden');
+            document.getElementById('roleBadge').innerText = `Role: ${role}`;
+
+            if (role === 'ADMIN') {
+                document.getElementById('adminPanel').classList.remove('hidden');
+            } else if (role === 'LANDLORD') {
+                document.getElementById('managerPanel').classList.remove('hidden');
+            } else if (role === 'TENANT') {
+                document.getElementById('tenantPanel').classList.remove('hidden');
+            }
+        } catch(e) {
+            alert('Login failed! Check credentials.');
+        }
+    }
+
+    async function apiCall(url, method='GET', body=null) {
+        const res = await fetch(API + url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic ' + btoa(user + ':' + pass)
+            },
+            body: body ? JSON.stringify(body) : null
+        });
+        if(!res.ok) {
+            const txt = await res.text();
+            return { error: txt };
+        }
+        return res.json();
+    }
+
+    // Admin functions
+    async function fetchManagers() {
+        const data = await apiCall('/admin/managers');
+        document.getElementById('adminData').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+    async function fetchVacant() {
+        const data = await apiCall('/admin/vacant-properties');
+        document.getElementById('adminData').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    // Manager functions
+    async function fetchMyProps() {
+        const data = await apiCall('/manager/my-properties');
+        document.getElementById('managerData').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+    async function fetchMyTenants() {
+        const data = await apiCall('/manager/my-tenants');
+        document.getElementById('managerData').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+    async function addTenant() {
+        const dto = { username: document.getElementById('newTenantUser').value, password: document.getElementById('newTenantPass').value, email: document.getElementById('newTenantEmail').value };
+        const data = await apiCall('/manager/create-tenant', 'POST', dto);
+        document.getElementById('managerData').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+    async function addProperty() {
+        const dto = { address: document.getElementById('propAddr').value, city: document.getElementById('propCity').value, monthlyRent: parseFloat(document.getElementById('propRent').value) };
+        const data = await apiCall('/manager/create-property', 'POST', dto);
+        document.getElementById('managerData').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+    async function assignLease() {
+        const tenantId = document.getElementById('assignTenantId').value.trim();
+        const propId = document.getElementById('assignPropId').value.trim();
+        if (!tenantId || !propId || isNaN(Number(tenantId)) || isNaN(Number(propId))) {
+            alert("Please enter valid numeric IDs.");
+            return;
+        }
+        const data = await apiCall(`/manager/assign-lease?tenantId=${tenantId}&propertyId=${propId}`, 'POST');
+        document.getElementById('managerData').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    // Tenant functions
+    async function fetchMyDashboard() {
+        const data = await apiCall('/tenant/my-dashboard');
+        document.getElementById('tenantData').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    // --- PAYMENT FUNCTIONS ---
+    async function payWithStripe() {
+        const dashboard = await apiCall('/tenant/my-dashboard');
+        // Find the first pending payment
+        const payment = dashboard.payments?.find(p => p.status === 'PENDING');
+        if (!payment) {
+            alert("No pending payments found.");
+            return;
+        }
+
+        document.getElementById('paymentStatus').innerText = "Processing Stripe payment...";
+
+        // 1. Get the Payment Intent from backend
+        const resp = await apiCall(`/payments/create-intent?paymentId=${payment.id}`, 'GET');
+        if (resp.error) {
+            document.getElementById('paymentStatus').innerText = 'Stripe error: ' + resp.error;
+            return;
+        }
+
+        // 2. Initialize Stripe
+        if (!stripeInstance) {
+            stripeInstance = Stripe(STRIPE_PUBLISHABLE_KEY);
+        }
+
+        // 3. Confirm the payment (opens the Stripe popup)
+        const { error } = await stripeInstance.confirmPayment({
+            elements: stripeInstance.elements({
+                clientSecret: resp.clientSecret
+            }),
+            confirmParams: {
+                return_url: window.location.href,
+            },
+        });
+
+        if (error) {
+            document.getElementById('paymentStatus').innerText = 'Payment failed: ' + error.message;
+        } else {
+            document.getElementById('paymentStatus').innerText = 'Payment succeeded!';
+            fetchMyDashboard(); // Refresh data
+        }
+    }
+
+    async function payWithMpesa() {
+        const phone = prompt("Enter your M-Pesa phone number (e.g. 0712345678):");
+        if (!phone) return;
+
+        const dashboard = await apiCall('/tenant/my-dashboard');
+        const payment = dashboard.payments?.find(p => p.status === 'PENDING');
+        if (!payment) {
+            alert("No pending payments.");
+            return;
+        }
+
+        document.getElementById('paymentStatus').innerText = "Sending STK Push to your phone...";
+        const resp = await apiCall(`/payments/mpesa/stk-push?paymentId=${payment.id}&phoneNumber=${phone}`, 'POST');
+
+        if (resp.error) {
+            document.getElementById('paymentStatus').innerText = 'M-Pesa error: ' + resp.error;
+        } else {
+            document.getElementById('paymentStatus').innerText = 'M-Pesa push sent! Check your phone to complete payment.';
+            setTimeout(fetchMyDashboard, 15000); // Refresh after 15 seconds
+        }
+    }
+</script>
+</body>
+</html>

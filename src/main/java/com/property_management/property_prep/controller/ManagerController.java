@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -112,7 +113,20 @@ public class ManagerController {
 
         return ResponseEntity.ok("Lease assigned successfully! Tenant moved in.");
     }
-
+    @GetMapping("/my-payments")
+    public ResponseEntity<List<Payment>> getMyPayments() {
+        User manager = getLoggedInManager();
+        // 1. Get all properties owned by this manager
+        List<Property> myProps = propertyRepository.findByManager(manager);
+        // 2. Get all leases for those properties
+        List<LeaseAgreement> leases = leaseRepository.findByPropertyIn(myProps);
+        // 3. Extract all payments for those leases
+        List<Payment> payments = new ArrayList<>();
+        for (LeaseAgreement lease : leases) {
+            payments.addAll(paymentRepository.findByLease(lease));
+        }
+        return ResponseEntity.ok(payments);
+    }
     private User getLoggedInManager() {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (user.getRole() != RoleType.LANDLORD) {

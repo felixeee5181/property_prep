@@ -49,9 +49,11 @@ public class AuthController {
         if (principal instanceof User) {
             User user = (User) principal;
             response.put("username", user.getUsername());
+            response.put("email", user.getEmail()); // <--- ADD THIS LINE
             response.put("role", user.getRole().name());
         } else {
             response.put("username", principal.toString());
+            response.put("email", "N/A");
             response.put("role", "UNKNOWN");
         }
         return ResponseEntity.ok(response);

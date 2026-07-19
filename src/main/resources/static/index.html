@@ -9,8 +9,15 @@
     <style>
         :root { --sidebar-bg: #0f172a; --active-blue: #3b82f6; --bg-light: #f1f5f9; --text-main: #1e293b; --card-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
         * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: var(--bg-light); display: flex; height: 100vh; overflow: hidden; }
-        .sidebar { width: 260px; background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: all 0.3s ease; }
+
+        /* --- GLOBAL BODY (Centers the app) --- */
+        body { background: #e2e8f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+
+        /* --- MAIN APP WRAPPER (Floating Card) --- */
+        #app { width: 100%; max-width: 1400px; height: 90vh; max-height: 950px; display: flex; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); background: #fff; }
+
+        /* --- SIDEBAR --- */
+        .sidebar { width: 260px; background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; }
         .sidebar-brand { padding: 24px; font-size: 20px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; position: relative; }
         .sidebar-brand .hamburger { font-size: 28px; cursor: pointer; color: #94a3b8; user-select: none; padding: 0 4px; border-radius: 4px; transition: 0.2s; }
         .sidebar-brand .hamburger:hover { color: #fff; background: rgba(255,255,255,0.1); }
@@ -24,6 +31,8 @@
         .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 4px; }
         .sidebar-footer .user-name { font-size: 14px; font-weight: 600; }
         .sidebar-footer .user-email { font-size: 13px; color: #94a3b8; }
+
+        /* --- MAIN CONTENT --- */
         .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background: var(--bg-light); }
         .top-header { background: #fff; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; }
         .top-header h2 { font-size: 20px; color: var(--text-main); }
@@ -52,9 +61,12 @@
         #loginSection { max-width: 400px; margin: auto; background: #fff; padding: 40px; border-radius: 12px; text-align: center; box-shadow: var(--card-shadow); margin-top: 50px; }
         #loginSection input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; }
         #loginSection button { width: 100%; padding: 12px; background: var(--active-blue); color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+
+        /* --- RESPONSIVE TWEAKS --- */
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
-            body { flex-direction: column; height: auto; overflow-y: auto; }
+            body { padding: 0; }
+            #app { height: auto; max-height: none; border-radius: 0; flex-direction: column; }
             .sidebar { width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; padding: 10px 15px; }
             .sidebar-brand { padding: 0; border-bottom: none; width: 100%; }
             .sidebar-nav { display: none; }
@@ -74,6 +86,7 @@
     </style>
 </head>
 <body>
+<!-- LOGIN -->
 <div id="loginSection">
     <h1>🏠 PropertyPrep</h1>
     <input type="text" id="loginUser" placeholder="Username" value="manager">
@@ -81,20 +94,19 @@
     <button onclick="login()">Login to Dashboard</button>
 </div>
 
+<!-- DASHBOARD (Centered Wrapper) -->
 <div id="app" class="hidden">
     <aside class="sidebar">
         <div class="sidebar-brand">
             <span>RentalManager</span>
             <span class="hamburger" onclick="toggleSidebarMenu()">☰</span>
             <div class="sidebar-dropdown" id="sidebarDropdown">
-                <!-- 👇 Manager-only menu items -->
                 <div id="managerOnlyMenu">
                     <div class="sidebar-dropdown-item" onclick="switchView('view-tenants')">👥 View Tenants</div>
                     <div class="sidebar-dropdown-item" onclick="switchView('view-add-tenant')">➕ Add Tenant</div>
                     <div class="sidebar-dropdown-item" onclick="switchView('view-properties')">🏢 View Properties</div>
                     <div class="sidebar-dropdown-item" onclick="switchView('view-add-property')">➕ Add Property</div>
                 </div>
-                <!-- 👇 Tenant / Shared menu items -->
                 <div class="sidebar-dropdown-item" onclick="switchView('view-tenant-status')">📊 Tenant Status</div>
             </div>
         </div>
@@ -175,14 +187,12 @@
             document.getElementById('userEmail').innerText = data.email;
             document.getElementById('userRole').innerText = data.role;
 
-            // 👇 Hide manager menu if the logged-in user is a TENANT
             const managerMenu = document.getElementById('managerOnlyMenu');
             if (data.role === 'TENANT') {
                 managerMenu.classList.add('hidden');
             } else {
                 managerMenu.classList.remove('hidden');
             }
-            // 👆
 
             await loadAllData();
         } catch(e) { alert('Login failed! Check F12 console.'); console.error(e); }

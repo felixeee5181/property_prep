@@ -19,6 +19,10 @@ import java.util.List;
 @AllArgsConstructor
 public class User implements UserDetails {
 
+    public enum SubscriptionTier {
+        BASIC, PRO, PREMIUM
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -35,6 +39,10 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RoleType role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SubscriptionTier subscription = SubscriptionTier.BASIC; // default
 
     // UserDetails methods
     @Override

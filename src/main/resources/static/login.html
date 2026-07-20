@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login · PropManage</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Same design system as landing & dashboard */
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1e40af;
+      --bg-light: #f8fafc;
+      --text-dark: #0f172a;
+      --text-muted: #64748b;
+      --card-shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar (reused) */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 5%;
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #2563eb, #1e40af);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: #475569;
+      font-weight: 500;
+      transition: 0.2s;
+    }
+    .nav-links a:hover {
+      color: #2563eb;
+    }
+
+    /* Login Card */
+    .login-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    .login-card {
+      background: #fff;
+      max-width: 420px;
+      width: 100%;
+      padding: 40px;
+      border-radius: 24px;
+      box-shadow: var(--card-shadow);
+      border: 1px solid #e2e8f0;
+    }
+    .login-card h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-dark);
+    }
+    .login-card .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: #334155;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 15px;
+      transition: 0.2s;
+      background: #f8fafc;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+      background: #fff;
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+    }
+    .btn-primary:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .error-message {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+      font-size: 14px;
+    }
+    .error-message.show { display: block; }
+    .footer-note {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .footer-note a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* Footer (reused) */
+    footer {
+      padding: 30px 5%;
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+      color: var(--text-muted);
+      background: #fff;
+      font-size: 14px;
+    }
+    footer .socials a {
+      color: var(--text-muted);
+      margin: 0 8px;
+      font-size: 18px;
+      transition: 0.2s;
+    }
+    footer .socials a:hover { color: #2563eb; }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .login-card { padding: 30px 20px; }
+      .navbar { padding: 15px 20px; }
+      .nav-links a { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navbar (same as landing) -->
+<nav class="navbar">
+  <a href="/index.html" class="logo">PropManage</a>
+  <div class="nav-links">
+    <a href="/index.html#features">Features</a>
+    <a href="/index.html#pricing">Pricing</a>
+    <a href="/index.html#about">About</a>
+  </div>
+</nav>
+
+<!-- Login Card -->
+<div class="login-container">
+  <div class="login-card">
+    <h2>Welcome back</h2>
+    <p class="subtitle">Sign in to your PropManage account</p>
+    <div id="errorMessage" class="error-message"></div>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="e.g. manager" value="manager" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="••••••••" value="pass123" required>
+      </div>
+      <button type="submit" class="btn-primary" id="loginBtn">Sign In</button>
+    </form>
+    <div class="footer-note">
+      Don't have an account? <a href="/index.html">Get Started</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>&copy; 2026 PropManage. All rights reserved.</p>
+  <div class="socials">
+    <a href="#"><i class="fab fa-twitter"></i></a>
+    <a href="#"><i class="fab fa-github"></i></a>
+    <a href="#"><i class="fab fa-linkedin"></i></a>
+  </div>
+</footer>
+
+<script>
+  const API = 'http://localhost:8081/api';
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const btn = document.getElementById('loginBtn');
+    const errorEl = document.getElementById('errorMessage');
+
+    errorEl.classList.remove('show');
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Invalid credentials');
+
+      // Store token and redirect to dashboard
+      localStorage.setItem('jwtToken', data.token);
+      window.location.href = '/dashboard.html';
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.classList.add('show');
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+  });
+</script>
+</body>
+</html>

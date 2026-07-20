@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PropertyPrep · Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        :root { --sidebar-bg: #0f172a; --active-blue: #3b82f6; --bg-light: #f1f5f9; --text-main: #1e293b; --card-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #e2e8f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        #app { width: 100%; max-width: 1400px; height: 90vh; max-height: 950px; display: flex; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); background: #fff; }
+        .sidebar { width: 260px; background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; }
+        .sidebar-brand { padding: 24px; font-size: 20px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; position: relative; }
+        .sidebar-brand .hamburger { font-size: 28px; cursor: pointer; color: #94a3b8; user-select: none; padding: 0 4px; border-radius: 4px; transition: 0.2s; }
+        .sidebar-brand .hamburger:hover { color: #fff; background: rgba(255,255,255,0.1); }
+        .sidebar-dropdown { position: absolute; top: 100%; left: 0; width: 100%; background: #1e293b; border-radius: 0 0 12px 12px; display: none; flex-direction: column; padding: 8px 0; z-index: 100; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); }
+        .sidebar-dropdown.open { display: flex; }
+        .sidebar-dropdown-item { padding: 14px 24px; cursor: pointer; font-size: 14px; font-weight: 500; color: #94a3b8; transition: background 0.2s, color 0.2s; display: flex; align-items: center; gap: 10px; }
+        .sidebar-dropdown-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .sidebar-nav { flex: 1; padding: 20px 12px; }
+        .nav-link { display: flex; align-items: center; padding: 12px 16px; color: #94a3b8; border-radius: 10px; cursor: pointer; }
+        .nav-link.active { background: var(--active-blue); color: #fff; }
+        .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 4px; }
+        .sidebar-footer .user-name { font-size: 14px; font-weight: 600; }
+        .sidebar-footer .user-email { font-size: 13px; color: #94a3b8; }
+        .sidebar-footer .user-subscription { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .sidebar-footer .property-usage { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background: var(--bg-light); }
+        .top-header { background: #fff; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; }
+        .top-header h2 { font-size: 20px; color: var(--text-main); }
+        .page-section { padding: 24px; display: none; animation: fadeIn 0.3s ease; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .stat-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: var(--card-shadow); }
+        .stat-card .number { font-size: 32px; font-weight: 700; }
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: #fff; border-radius: 12px; box-shadow: var(--card-shadow); padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 12px; }
+        td { padding: 12px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+        .badge-paid { background: #dcfce7; color: #166534; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-overdue { background: #fee2e2; color: #991b1b; }
+        .hidden { display: none !important; }
+        #loginSection { max-width: 400px; margin: auto; background: #fff; padding: 40px; border-radius: 12px; text-align: center; box-shadow: var(--card-shadow); margin-top: 50px; }
+
+        /* Multi-Step Wizard Styles */
+        .wizard-container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: var(--card-shadow); }
+        .wizard-step { display: none; }
+        .wizard-step.active { display: block; animation: fadeIn 0.3s ease; }
+        .wizard-step h3 { margin-bottom: 20px; color: var(--text-main); }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 4px; color: #334155; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--active-blue); }
+        .wizard-buttons { display: flex; justify-content: space-between; margin-top: 20px; }
+        .btn-secondary { background: #e2e8f0; color: #334155; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .btn-primary { background: var(--active-blue); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-primary:hover { background: #2563eb; }
+        .summary-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
+        .summary-box p { margin: 5px 0; }
+
+        /* Responsive */
+        @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            body { padding: 0; }
+            #app { height: auto; max-height: none; border-radius: 0; flex-direction: column; }
+            .sidebar { width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; padding: 10px 15px; }
+            .sidebar-brand { padding: 0; border-bottom: none; width: 100%; }
+            .sidebar-nav { display: none; }
+            .sidebar-footer { display: none; }
+            .main-content { width: 100%; }
+            .top-header { padding: 12px 16px; }
+            .page-section { padding: 16px; }
+            .stats-grid { grid-template-columns: 1fr; gap: 12px; }
+            .wizard-container { max-width: 100%; }
+        }
+        @media (max-width: 480px) {
+            .sidebar-brand { font-size: 16px; }
+            .sidebar-dropdown-item { padding: 12px 16px; font-size: 13px; }
+            .stat-card .number { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+<div id="loginSection">
+    <h1>🏠 PropertyPrep</h1>
+    <input type="text" id="loginUser" placeholder="Username" value="manager">
+    <input type="password" id="loginPass" placeholder="Password" value="pass123">
+    <button onclick="login()">Login to Dashboard</button>
+</div>
+
+<div id="app" class="hidden">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span>RentalManager</span>
+            <span class="hamburger" onclick="toggleSidebarMenu()">☰</span>
+            <div class="sidebar-dropdown" id="sidebarDropdown">
+                <div id="managerOnlyMenu">
+                    <div class="sidebar-dropdown-item" onclick="switchView('view-tenants')">👥 View Tenants</div>
+                    <div class="sidebar-dropdown-item" onclick="switchView('view-add-tenant')">➕ Add Tenant</div>
+                    <div class="sidebar-dropdown-item" onclick="switchView('view-properties')">🏢 View Properties</div>
+                    <div class="sidebar-dropdown-item" onclick="switchView('view-add-property')">➕ Add Property</div>
+                </div>
+                <div class="sidebar-dropdown-item" onclick="switchView('view-tenant-status')">📊 Tenant Status</div>
+            </div>
+        </div>
+        <nav class="sidebar-nav"><div class="nav-link active">📊 Dashboard</div></nav>
+        <div class="sidebar-footer">
+            <span class="user-name" id="userName">Loading...</span>
+            <span class="user-email" id="userEmail">Email</span>
+            <span style="font-size: 11px; color: #64748b; margin-top: 2px;" id="userRole">Role</span>
+            <span class="user-subscription" id="userSubscription">Subscription: BASIC</span>
+            <span class="property-usage" id="propertyUsage">Properties: 0 / 5</span>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <div class="top-header"><h2 id="headerTitle">Dashboard</h2></div>
+
+        <!-- ============ DASHBOARD VIEW ============ -->
+        <div id="view-dashboard" class="page-section active">
+            <div class="stats-grid">
+                <div class="stat-card"><h4>Occupied</h4><div class="number" id="occupiedCount">0</div></div>
+                <div class="stat-card"><h4>Vacant</h4><div class="number" id="vacantCount">0</div></div>
+                <div class="stat-card"><h4>Occupancy Rate</h4><div class="number" id="occupancyRate">0%</div></div>
+            </div>
+            <div class="dashboard-grid">
+                <div class="card"><h3>Occupancy</h3><div style="height: 180px;"><canvas id="occupancyDonut"></canvas></div></div>
+                <div class="card"><h3>Recent Payments</h3><table><thead><tr><th>Tenant</th><th>Unit</th><th>Amount</th><th>Status</th></tr></thead><tbody id="paymentsTableBody"><tr><td colspan="4" style="text-align:center;">Loading...</td></tr></tbody></table></div>
+            </div>
+        </div>
+
+        <!-- ============ VIEW TENANTS ============ -->
+        <div id="view-tenants" class="page-section">
+            <div class="card"><h3>My Tenants</h3><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Property</th></tr></thead><tbody id="tenantsListBody"></tbody></table></div>
+        </div>
+
+        <!-- ============ ADD TENANT (MULTI‑STEP) ============ -->
+        <div id="view-add-tenant" class="page-section">
+            <div class="wizard-container">
+                <h3>Add New Tenant – Step <span id="stepIndicator">1</span> of 3</h3>
+
+                <!-- Step 1: Personal Information -->
+                <div id="step1" class="wizard-step active">
+                    <div class="form-group">
+                        <label for="fullName">Full Name *</label>
+                        <input type="text" id="fullName" placeholder="John Doe" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phoneNumber">Phone Number *</label>
+                        <input type="text" id="phoneNumber" placeholder="+254 712 345 678" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="idNumber">ID / Passport Number *</label>
+                        <input type="text" id="idNumber" placeholder="12345678" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" placeholder="john@email.com">
+                    </div>
+                    <div class="wizard-buttons">
+                        <div></div>
+                        <button class="btn-primary" onclick="nextStep(1)">Next →</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Property & Lease -->
+                <div id="step2" class="wizard-step">
+                    <div class="form-group">
+                        <label for="propertySelect">Select Property *</label>
+                        <select id="propertySelect" required>
+                            <option value="">— Choose a property —</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="leaseStart">Lease Start Date *</label>
+                        <input type="date" id="leaseStart" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="leaseEnd">Lease End Date *</label>
+                        <input type="date" id="leaseEnd" required>
+                    </div>
+                    <div class="wizard-buttons">
+                        <button class="btn-secondary" onclick="prevStep(2)">← Back</button>
+                        <button class="btn-primary" onclick="nextStep(2)">Next →</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Summary & Submit -->
+                <div id="step3" class="wizard-step">
+                    <h3>Review & Confirm</h3>
+                    <div class="summary-box" id="summary"></div>
+                    <div class="wizard-buttons">
+                        <button class="btn-secondary" onclick="prevStep(3)">← Back</button>
+                        <button class="btn-primary" id="submitTenantBtn">Submit Tenant</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ VIEW PROPERTIES ============ -->
+        <div id="view-properties" class="page-section">
+            <div class="card"><h3>My Properties</h3><table><thead><tr><th>Address</th><th>City</th><th>Rent</th><th>Status</th></tr></thead><tbody id="propertiesListBody"></tbody></table></div>
+        </div>
+
+        <!-- ============ ADD PROPERTY ============ -->
+        <div id="view-add-property" class="page-section">
+            <div class="card form-card">
+                <h3>Add New Property</h3>
+                <div class="form-group"><label>Address</label><input id="pAddr" placeholder="123 Main St"></div>
+                <div class="form-group"><label>City</label><input id="pCity" placeholder="Nairobi"></div>
+                <div class="form-group"><label>Monthly Rent (KES)</label><input id="pRent" type="number" placeholder="50000"></div>
+                <button class="btn-primary" onclick="addPropertyFromMenu()">Add Property</button>
+            </div>
+        </div>
+
+        <!-- ============ TENANT STATUS ============ -->
+        <div id="view-tenant-status" class="page-section">
+            <div class="card"><h3>Payment Status Overview</h3><table><thead><tr><th>Tenant</th><th>Property</th><th>Status</th></tr></thead><tbody id="statusListBody"></tbody></table></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ JAVASCRIPT ============ -->
+<script>
+    const API = 'http://localhost:8081/api';
+    let donutChartInstance = null;
+    let allProperties = [], allPayments = [], allTenants = [];
+
+    // ---------- AUTO-LOGIN ON PAGE LOAD ----------
+    document.addEventListener('DOMContentLoaded', async function() {
+        const token = localStorage.getItem('jwtToken');
+        if (token) {
+            // Try to validate token by fetching user info
+            const user = await apiCall('/auth/me');
+            if (!user.error) {
+                // Token valid – automatically log in
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                document.getElementById('userName').innerText = user.username || 'User';
+                document.getElementById('userRole').innerText = 'Logged in';
+                await loadUserInfo();
+                await loadAllData();
+                updatePropertyUsage();
+                populatePropertyDropdown();
+                return;
+            } else {
+                // Token expired/invalid – clear it and show login
+                localStorage.removeItem('jwtToken');
+            }
+        }
+        // No valid token – login section remains visible
+    });
+
+    // ---------- LOGIN (manual) ----------
+    async function login() {
+        const user = document.getElementById('loginUser').value;
+        const pass = document.getElementById('loginPass').value;
+        try {
+            const res = await fetch(`${API}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Login failed');
+
+            localStorage.setItem('jwtToken', data.token);
+
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            document.getElementById('userName').innerText = user;
+            document.getElementById('userRole').innerText = 'Logged in';
+
+            await loadUserInfo();
+            await loadAllData();
+            updatePropertyUsage();
+            populatePropertyDropdown();
+        } catch(e) {
+            alert('Login failed: ' + e.message);
+            console.error(e);
+        }
+    }
+
+    // ---------- API CALL ----------
+    async function apiCall(url, method='GET', body=null) {
+        const token = localStorage.getItem('jwtToken');
+        const res = await fetch(API + url, {
+            method,
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: body ? JSON.stringify(body) : null
+        });
+        if (!res.ok) {
+            const errorText = await res.text();
+            return { error: `Status ${res.status}: ${errorText}` };
+        }
+        return res.json();
+    }
+
+    // ---------- LOAD USER INFO ----------
+    async function loadUserInfo() {
+        const user = await apiCall('/auth/me');
+        if (!user.error) {
+            document.getElementById('userEmail').innerText = user.email || 'N/A';
+            document.getElementById('userSubscription').innerText = 'Subscription: ' + (user.subscription || 'BASIC');
+        }
+    }
+
+    // ---------- SIDEBAR / VIEWS ----------
+    function toggleSidebarMenu() { document.getElementById('sidebarDropdown').classList.toggle('open'); }
+
+    function switchView(viewId) {
+        document.getElementById('sidebarDropdown').classList.remove('open');
+        document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+        let target = document.getElementById(viewId);
+        if (!target) target = document.getElementById('view-' + viewId);
+        if (target) {
+            target.classList.add('active');
+            let title = target.querySelector('h3')?.innerText;
+            if (!title) title = viewId.replace('-', ' ');
+            document.getElementById('headerTitle').innerText = title;
+        }
+        if (viewId === 'view-tenants') renderTenantsTable();
+        if (viewId === 'view-properties') renderPropertiesTable();
+        if (viewId === 'view-tenant-status') renderStatusTable();
+    }
+
+    // ---------- LOAD ALL DATA ----------
+    async function loadAllData() {
+        allProperties = await apiCall('/manager/my-properties');
+        allPayments = await apiCall('/manager/my-payments');
+        allTenants = await apiCall('/manager/my-tenants');
+        renderDashboard();
+        renderPropertiesTable();
+        renderTenantsTable();
+        renderStatusTable();
+        updatePropertyUsage();
+        populatePropertyDropdown();
+    }
+
+    // ---------- RENDER DASHBOARD ----------
+    function renderDashboard() {
+        let props = Array.isArray(allProperties) ? allProperties : [];
+        const total = props.length;
+        const occupied = props.filter(p => p.occupied).length;
+        const vacant = total - occupied;
+        const rate = total > 0 ? Math.round((occupied / total) * 100) : 0;
+        document.getElementById('occupiedCount').innerText = occupied;
+        document.getElementById('vacantCount').innerText = vacant;
+        document.getElementById('occupancyRate').innerText = rate + '%';
+
+        const ctx = document.getElementById('occupancyDonut').getContext('2d');
+        if (donutChartInstance) donutChartInstance.destroy();
+        donutChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: ['Occupied', 'Vacant'], datasets: [{ data: [occupied, vacant], backgroundColor: ['#3b82f6', '#e2e8f0'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' } });
+
+        let payments = Array.isArray(allPayments) ? allPayments : [];
+        const tbody = document.getElementById('paymentsTableBody');
+        if(payments.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No recent payments found.</td></tr>`;
+        else tbody.innerHTML = payments.map(p => `<tr><td>${p.lease?.tenant?.username || "Tenant"}</td><td>${p.lease?.property?.address || "Unit"}</td><td>KES ${p.amount?.toLocaleString() || 0}</td><td><span class="badge ${p.status === 'PAID' ? 'badge-paid' : p.status === 'OVERDUE' ? 'badge-overdue' : 'badge-pending'}">${p.status || 'PENDING'}</span></td></tr>`).join('');
+    }
+
+    function renderPropertiesTable() {
+        const props = Array.isArray(allProperties) ? allProperties : [];
+        const tbody = document.getElementById('propertiesListBody');
+        if(props.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No properties added yet.</td></tr>`;
+        else tbody.innerHTML = props.map(p => `<tr><td>${p.address}</td><td>${p.city}</td><td>KES ${p.monthlyRent}</td><td>${p.occupied ? '🟢 Occupied' : '🔴 Vacant'}</td></tr>`).join('');
+    }
+
+    function renderTenantsTable() {
+        const tenants = Array.isArray(allTenants) ? allTenants : [];
+        const tbody = document.getElementById('tenantsListBody');
+        if(tenants.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No tenants added yet.</td></tr>`;
+        else tbody.innerHTML = tenants.map(t => `<tr><td>${t.username}</td><td>${t.email}</td><td>${t.phone || 'N/A'}</td><td>${t.currentProperty?.address || 'Not assigned'}</td></tr>`).join('');
+    }
+
+    function renderStatusTable() {
+        const payments = Array.isArray(allPayments) ? allPayments : [];
+        const tbody = document.getElementById('statusListBody');
+        if(payments.length === 0) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8;">No payment records found.</td></tr>`;
+        else tbody.innerHTML = payments.map(p => `<tr><td>${p.lease?.tenant?.username || "Tenant"}</td><td>${p.lease?.property?.address || "Unit"}</td><td><span class="badge ${p.status === 'PAID' ? 'badge-paid' : p.status === 'OVERDUE' ? 'badge-overdue' : 'badge-pending'}">${p.status || 'PENDING'}</span></td></tr>`).join('');
+    }
+
+    // ---------- PROPERTY USAGE ----------
+    async function updatePropertyUsage() {
+        const user = await apiCall('/auth/me');
+        if (user.error) return;
+        const props = Array.isArray(allProperties) ? allProperties : [];
+        const count = props.length;
+        let max = 5;
+        if (user.subscription === 'PRO') max = 20;
+        else if (user.subscription === 'PREMIUM') max = 100;
+        document.getElementById('propertyUsage').innerText = `Properties: ${count} / ${max}`;
+    }
+
+    // ---------- POPULATE PROPERTY DROPDOWN ----------
+    function populatePropertyDropdown() {
+        const sel = document.getElementById('propertySelect');
+        const props = Array.isArray(allProperties) ? allProperties : [];
+        sel.innerHTML = '<option value="">— Choose a property —</option>';
+        props.forEach(p => {
+            if (!p.occupied) {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.address + ' (KES ' + p.monthlyRent + ')';
+                sel.appendChild(opt);
+            }
+        });
+    }
+
+    // ---------- WIZARD FUNCTIONS ----------
+    function nextStep(currentStep) {
+        if (currentStep === 1) {
+            const fullName = document.getElementById('fullName').value.trim();
+            const phone = document.getElementById('phoneNumber').value.trim();
+            const id = document.getElementById('idNumber').value.trim();
+            if (!fullName || !phone || !id) {
+                alert('Please fill in Name, Phone, and ID Number.');
+                return;
+            }
+        }
+        if (currentStep === 2) {
+            const prop = document.getElementById('propertySelect').value;
+            const start = document.getElementById('leaseStart').value;
+            const end = document.getElementById('leaseEnd').value;
+            if (!prop || !start || !end) {
+                alert('Please select a property and lease dates.');
+                return;
+            }
+            if (new Date(end) <= new Date(start)) {
+                alert('End date must be after start date.');
+                return;
+            }
+        }
+
+        const currentEl = document.getElementById(`step${currentStep}`);
+        const nextEl = document.getElementById(`step${currentStep + 1}`);
+        if (nextEl) {
+            currentEl.classList.remove('active');
+            nextEl.classList.add('active');
+            document.getElementById('stepIndicator').innerText = currentStep + 1;
+            if (currentStep + 1 === 3) {
+                updateSummary();
+            }
+        }
+    }
+
+    function prevStep(currentStep) {
+        const currentEl = document.getElementById(`step${currentStep}`);
+        const prevEl = document.getElementById(`step${currentStep - 1}`);
+        if (prevEl) {
+            currentEl.classList.remove('active');
+            prevEl.classList.add('active');
+            document.getElementById('stepIndicator').innerText = currentStep - 1;
+        }
+    }
+
+    function updateSummary() {
+        const fullName = document.getElementById('fullName').value.trim();
+        const phone = document.getElementById('phoneNumber').value.trim();
+        const id = document.getElementById('idNumber').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const propId = document.getElementById('propertySelect').value;
+        const start = document.getElementById('leaseStart').value;
+        const end = document.getElementById('leaseEnd').value;
+
+        const prop = allProperties.find(p => p.id == propId);
+        const propText = prop ? prop.address : 'Not selected';
+
+        document.getElementById('summary').innerHTML = `
+                <p><strong>Name:</strong> ${fullName}</p>
+                <p><strong>Phone:</strong> ${phone}</p>
+                <p><strong>ID:</strong> ${id}</p>
+                <p><strong>Email:</strong> ${email || 'Not provided'}</p>
+                <p><strong>Property:</strong> ${propText}</p>
+                <p><strong>Lease:</strong> ${start} → ${end}</p>
+            `;
+    }
+
+    // ---------- SUBMIT TENANT ----------
+    document.getElementById('submitTenantBtn').addEventListener('click', async function() {
+        const fullName = document.getElementById('fullName').value.trim();
+        const phone = document.getElementById('phoneNumber').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const propId = document.getElementById('propertySelect').value;
+        const start = document.getElementById('leaseStart').value;
+        const end = document.getElementById('leaseEnd').value;
+
+        const username = fullName.toLowerCase().replace(/\s+/g, '_') + Math.floor(Math.random()*1000);
+        const password = 'pass123';
+
+        const tenantDto = { username, password, email };
+        const tenantResult = await apiCall('/manager/create-tenant', 'POST', tenantDto);
+        if (tenantResult.error) {
+            alert('Failed to create tenant: ' + tenantResult.error);
+            return;
+        }
+
+        const tenants = await apiCall('/manager/my-tenants');
+        const newTenant = tenants.find(t => t.username === username);
+        if (!newTenant) {
+            alert('Tenant created but could not assign lease. Please assign manually.');
+            return;
+        }
+
+        const leaseResult = await apiCall(`/manager/assign-lease?tenantId=${newTenant.id}&propertyId=${propId}`, 'POST');
+        if (leaseResult.error) {
+            alert('Failed to assign lease: ' + leaseResult.error);
+            return;
+        }
+
+        alert('Tenant created and lease assigned successfully!');
+        document.getElementById('fullName').value = '';
+        document.getElementById('phoneNumber').value = '';
+        document.getElementById('idNumber').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('propertySelect').value = '';
+        document.getElementById('leaseStart').value = '';
+        document.getElementById('leaseEnd').value = '';
+        document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+        document.getElementById('step1').classList.add('active');
+        document.getElementById('stepIndicator').innerText = '1';
+        await loadAllData();
+        switchView('view-tenants');
+    });
+
+    // ---------- ADD PROPERTY ----------
+    async function addPropertyFromMenu() {
+        const address = document.getElementById('pAddr').value.trim();
+        const city = document.getElementById('pCity').value.trim();
+        const rent = parseFloat(document.getElementById('pRent').value);
+        if(!address || !city || isNaN(rent)) { alert("Please fill all property fields."); return; }
+        const dto = { address: address, city: city, monthlyRent: rent };
+        const result = await apiCall('/manager/create-property', 'POST', dto);
+        if(result.error) alert("Error adding property: " + result.error);
+        else {
+            alert("Property added!");
+            document.getElementById('pAddr').value = '';
+            document.getElementById('pCity').value = '';
+            document.getElementById('pRent').value = '';
+            allProperties = await apiCall('/manager/my-properties');
+            renderPropertiesTable();
+            renderDashboard();
+            updatePropertyUsage();
+            populatePropertyDropdown();
+        }
+    }
+</script>
+</body>
+</html>

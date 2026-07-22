@@ -9,5 +9,7 @@ public class RegisterRequest {
     @NotBlank private String username;
     @NotBlank private String password;
     @Email @NotBlank private String email;
+    private String phone;
+
   //  private String role; // optional – default to TENANT
 }

@@ -33,8 +33,11 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+
+
     @Column(unique = true, nullable = false)
     private String email;
+    private String phone;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

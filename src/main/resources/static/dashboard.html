@@ -125,6 +125,14 @@
 
     <div class="main-content">
         <div class="top-header"><h2 id="headerTitle">Dashboard</h2></div>
+        <div class="card" style="margin-bottom:20px;">
+            <h3>➕ Add New Manager (Landlord)</h3>
+            <div class="form-group" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <input type="text" id="newManagerUsername" placeholder="Username" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                <input type="email" id="newManagerEmail" placeholder="Email" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                <button class="btn-primary" onclick="createManager()" style="padding:8px 20px;">Create Manager</button>
+            </div>
+        </div>
 
         <!-- ============ LANDLORD DASHBOARD ============ -->
         <div id="view-landlord-dashboard" class="page-section active">

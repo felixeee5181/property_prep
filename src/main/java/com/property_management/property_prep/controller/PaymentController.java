@@ -37,6 +37,9 @@ public class PaymentController {
     @Value("${stripe.api.key}")
     private String stripeApiKey;
 
+    @Value("${stripe.publishable.key}")
+    private String stripePublishableKey;
+
     private final PaymentRepository paymentRepository;
     private final LeaseRepository leaseRepository;
     private final PropertyRepository propertyRepository;
@@ -86,22 +89,43 @@ public class PaymentController {
     }
 
     // ==========================================
-    // 2. STRIPE WEBHOOK (Called by Stripe)
+    // 2. STRIPE WEBHOOK (Called by Stripe) - BUG FIXED
     // ==========================================
     @PostMapping("/stripe-webhook")
     public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload) {
         try {
-            // Parse the payload to check for payment_intent.succeeded
-            if (payload.contains("payment_intent.succeeded")) {
-                // Extract the paymentId from metadata (in a real impl, use JSON parsing)
-                // For demo, we'll just log it
-                System.out.println("Stripe payment succeeded!");
-                // TODO: Parse JSON to get metadata.paymentId and update status to PAID
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(payload);
+
+            // Check if it's a successful payment intent
+            if (root.has("type") && "payment_intent.succeeded".equals(root.get("type").asText())) {
+                JsonNode intent = root.get("data").get("object");
+                String paymentIdStr = intent.get("metadata").get("paymentId").asText();
+                Long paymentId = Long.parseLong(paymentIdStr);
+
+                // Update the database
+                Payment payment = paymentRepository.findById(paymentId)
+                        .orElseThrow(() -> new RuntimeException("Payment not found"));
+                payment.setStatus("PAID");
+                payment.setPaidDate(LocalDate.now());
+                paymentRepository.save(payment);
+
+                // Send receipt to tenant
+                String tenantEmail = payment.getLease().getTenant().getEmail();
+                String subject = "🧾 Payment Receipt (Stripe)";
+                String body = String.format(
+                        "Dear %s,\n\nYour payment of KES %.2f has been received successfully.\n\nThank you.",
+                        payment.getLease().getTenant().getUsername(), payment.getAmount()
+                );
+                emailService.sendSimpleEmail(tenantEmail, subject, body);
+
+                System.out.println("✅ Stripe payment verified for ID: " + paymentId);
             }
         } catch (Exception e) {
+            System.err.println("Webhook error: " + e.getMessage());
             return ResponseEntity.status(400).body("Webhook error");
         }
-        return ResponseEntity.ok("Webhook received");
+        return ResponseEntity.ok("Success");
     }
 
     // ==========================================
@@ -138,7 +162,60 @@ public class PaymentController {
     }
 
     // ==========================================
-    // 4. CASH PAYMENT REQUEST (Tenant)
+    // 4. M-PESA CALLBACK (Called by Safaricom) - BUG FIXED
+    // ==========================================
+    @PostMapping("/mpesa/callback")
+    public ResponseEntity<String> mpesaCallback(@RequestBody String callbackData) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(callbackData);
+
+            // Safaricom returns a nested structure. We check for ResultCode.
+            if (root.has("Body") && root.get("Body").has("stkCallback")) {
+                JsonNode callback = root.get("Body").get("stkCallback");
+                int resultCode = callback.get("ResultCode").asInt();
+
+                if (resultCode == 0) { // 0 means success
+                    String accountRef = callback.get("AccountReference").asText(); // format: "Lease-{leaseId}"
+                    String leaseIdStr = accountRef.replace("Lease-", "");
+                    Long leaseId = Long.parseLong(leaseIdStr);
+
+                    // Find the lease
+                    LeaseAgreement lease = leaseRepository.findById(leaseId)
+                            .orElseThrow(() -> new RuntimeException("Lease not found"));
+
+                    // Find the latest pending M-PESA payment for this lease
+                    List<Payment> pendingPayments = paymentRepository
+                            .findByLeaseAndPaymentMethodAndStatus(lease, "MPESA", "PENDING");
+
+                    if (!pendingPayments.isEmpty()) {
+                        Payment payment = pendingPayments.get(0); // Get the most recent one
+                        payment.setStatus("PAID");
+                        payment.setPaidDate(LocalDate.now());
+                        paymentRepository.save(payment);
+
+                        // Send receipt to tenant
+                        String tenantEmail = lease.getTenant().getEmail();
+                        String subject = "🧾 Payment Receipt (M-Pesa)";
+                        String body = String.format(
+                                "Dear %s,\n\nYour payment of KES %.2f via M-Pesa has been received successfully.\n\nThank you.",
+                                lease.getTenant().getUsername(), payment.getAmount()
+                        );
+                        emailService.sendSimpleEmail(tenantEmail, subject, body);
+
+                        System.out.println("✅ M-PESA payment verified for Lease: " + leaseIdStr);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("M-PESA callback error: " + e.getMessage());
+            return ResponseEntity.status(400).body("Callback error");
+        }
+        return ResponseEntity.ok("Success");
+    }
+
+    // ==========================================
+    // 5. CASH PAYMENT REQUEST (Tenant)
     // ==========================================
     @PostMapping("/create-cash")
     public ResponseEntity<Map<String, Object>> createCashPayment(
@@ -178,7 +255,7 @@ public class PaymentController {
     }
 
     // ==========================================
-    // 5. CONFIRM CASH PAYMENT (Manager)
+    // 6. CONFIRM CASH PAYMENT (Manager)
     // ==========================================
     @PostMapping("/cash/{paymentId}")
     public ResponseEntity<String> confirmCashPayment(
@@ -217,14 +294,18 @@ public class PaymentController {
                 payment.getAmount(), payment.getLease().getTenant().getUsername()
         );
 
-        emailService.sendSimpleEmail(tenantEmail, subject, tenantBody);
-        emailService.sendSimpleEmail(managerEmail, subject, managerBody);
+        if (tenantEmail != null && !tenantEmail.isBlank()) {
+            emailService.sendSimpleEmail(tenantEmail, subject, tenantBody);
+        }
+        if (managerEmail != null && !managerEmail.isBlank()) {
+            emailService.sendSimpleEmail(managerEmail, subject, managerBody);
+        }
 
         return ResponseEntity.ok("Cash payment confirmed and receipts sent.");
     }
 
     // ==========================================
-    // 6. GET PENDING CASH PAYMENTS (Manager)
+    // 7. GET PENDING CASH PAYMENTS (Manager)
     // ==========================================
     @GetMapping("/cash-pending")
     public ResponseEntity<List<Payment>> getPendingCashPayments(@AuthenticationPrincipal User manager) {
@@ -246,10 +327,10 @@ public class PaymentController {
         }
         return ResponseEntity.ok(cashPayments);
     }
-    // Inside PaymentController.java
-    @Value("${stripe.publishable.key}")
-    private String stripePublishableKey;
 
+    // ==========================================
+    // 8. CONFIG ENDPOINT (For Stripe Publishable Key)
+    // ==========================================
     @GetMapping("/config/stripe-publishable-key")
     public ResponseEntity<String> getStripePublishableKey() {
         return ResponseEntity.ok(stripePublishableKey);

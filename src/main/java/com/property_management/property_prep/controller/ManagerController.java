@@ -10,6 +10,7 @@ import com.property_management.property_prep.repository.LeaseRepository;
 import com.property_management.property_prep.repository.PaymentRepository;
 import com.property_management.property_prep.repository.PropertyRepository;
 import com.property_management.property_prep.repository.UserRepository;
+import com.property_management.property_prep.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,15 +18,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/manager")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('LANDLORD')") // 🔒 Only Managers can use these endpoints
+@PreAuthorize("hasRole('LANDLORD')")
 public class ManagerController {
 
     private final UserRepository userRepository;
@@ -33,8 +36,9 @@ public class ManagerController {
     private final LeaseRepository leaseRepository;
     private final PaymentRepository paymentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;  // ✅ Added emailService
 
-    // 1. Create a Tenant
+    // 1. Create a Tenant (with secure password and email notification)
     @PostMapping("/create-tenant")
     public ResponseEntity<String> createTenant(@RequestBody RegisterRequest request) {
         User manager = getLoggedInManager();
@@ -43,22 +47,41 @@ public class ManagerController {
             return ResponseEntity.status(409).body("Username taken");
         }
 
+        // 🛡️ Generate a secure random password
+        String rawPassword = generateSecurePassword();
+
         User tenant = new User();
         tenant.setUsername(request.getUsername());
-        tenant.setPassword(passwordEncoder.encode(request.getPassword()));
+        tenant.setPassword(passwordEncoder.encode(rawPassword));
         tenant.setEmail(request.getEmail());
+        tenant.setPhone(request.getPhone());   // Make sure RegisterRequest has phone field
         tenant.setRole(RoleType.TENANT);
         userRepository.save(tenant);
 
-        return ResponseEntity.ok("Tenant created successfully");
+        // 📧 Email the raw password to the tenant instantly
+        String subject = "Welcome to PropManage - Your Login Credentials";
+        String body = String.format(
+                "Dear %s,\n\nYour account has been created.\n\nUsername: %s\nPassword: %s\n\nPlease log in and change your password immediately.",
+                request.getUsername(), request.getUsername(), rawPassword
+        );
+        emailService.sendSimpleEmail(tenant.getEmail(), subject, body);
+
+        return ResponseEntity.ok("Tenant created successfully. Password emailed to tenant.");
     }
 
-    // 2. Create a Property (WITH PROPERTY LIMIT ENFORCEMENT)
+    // 🔧 Helper method for secure password generation
+    private String generateSecurePassword() {
+        SecureRandom random = new SecureRandom();
+        byte[] bytes = new byte[8];
+        random.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes).substring(0, 10);
+    }
+
+    // 2. Create a Property (with property limit enforcement)
     @PostMapping("/create-property")
     public ResponseEntity<String> createProperty(@RequestBody Property property) {
         User manager = getLoggedInManager();
 
-        // 🔒 Check property limit based on subscription
         int currentCount = propertyRepository.countByManager(manager);
         int maxAllowed = switch (manager.getSubscription()) {
             case BASIC -> 5;
@@ -98,7 +121,7 @@ public class ManagerController {
         return ResponseEntity.ok(tenants);
     }
 
-    // 5. Assign Lease to a Tenant (Moves them in)
+    // 5. Assign Lease to a Tenant
     @PostMapping("/assign-lease")
     public ResponseEntity<String> assignLease(
             @RequestParam("tenantId") Long tenantId,

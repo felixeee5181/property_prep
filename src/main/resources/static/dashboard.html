@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PropertyPrep · Dashboard</title>
+    <title>PropManage · Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://js.stripe.com/v3/"></script>
     <style>
@@ -11,6 +11,8 @@
         * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: #e2e8f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
         #app { width: 100%; max-width: 1400px; height: 90vh; max-height: 950px; display: flex; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); background: #fff; }
+
+        /* --- Sidebar --- */
         .sidebar { width: 260px; background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; }
         .sidebar-brand { padding: 24px; font-size: 20px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; position: relative; }
         .sidebar-brand .hamburger { font-size: 28px; cursor: pointer; color: #94a3b8; user-select: none; padding: 0 4px; border-radius: 4px; transition: 0.2s; }
@@ -20,35 +22,48 @@
         .sidebar-dropdown-item { padding: 14px 24px; cursor: pointer; font-size: 14px; font-weight: 500; color: #94a3b8; transition: background 0.2s, color 0.2s; display: flex; align-items: center; gap: 10px; }
         .sidebar-dropdown-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
         .sidebar-nav { flex: 1; padding: 20px 12px; }
-        .nav-link { display: flex; align-items: center; padding: 12px 16px; color: #94a3b8; border-radius: 10px; cursor: pointer; }
+        .nav-link { display: flex; align-items: center; padding: 12px 16px; color: #94a3b8; border-radius: 10px; cursor: pointer; margin-bottom: 4px; transition: 0.2s; }
         .nav-link.active { background: var(--active-blue); color: #fff; }
+        .nav-link:hover:not(.active) { background: rgba(255,255,255,0.05); }
+        .nav-link i { width: 24px; text-align: center; margin-right: 12px; font-size: 1.1rem; }
         .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 4px; }
         .sidebar-footer .user-name { font-size: 14px; font-weight: 600; }
         .sidebar-footer .user-email { font-size: 13px; color: #94a3b8; }
-        .sidebar-footer .user-subscription { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-        .sidebar-footer .property-usage { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .sidebar-footer .user-role-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 12px; background: rgba(255,255,255,0.1); display: inline-block; margin-top: 2px; }
+        .sidebar-footer .property-usage { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+
+        /* --- Main Content --- */
         .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background: var(--bg-light); }
-        .top-header { background: #fff; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; }
+        .top-header { background: #fff; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
         .top-header h2 { font-size: 20px; color: var(--text-main); }
         .page-section { padding: 24px; display: none; animation: fadeIn 0.3s ease; }
         .page-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Shared Components --- */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-bottom: 24px; }
         .stat-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: var(--card-shadow); }
         .stat-card .number { font-size: 32px; font-weight: 700; }
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .card { background: #fff; border-radius: 12px; box-shadow: var(--card-shadow); padding: 20px; }
         table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; padding: 12px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 12px; }
+        th { text-align: left; padding: 12px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 12px; font-weight: 700; }
         td { padding: 12px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
-        .badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+        .badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; display: inline-block; }
         .badge-paid { background: #dcfce7; color: #166534; }
         .badge-pending { background: #fef3c7; color: #92400e; }
         .badge-overdue { background: #fee2e2; color: #991b1b; }
+
+        /* --- Tenant / Admin Specific Grids --- */
+        .tenant-hero { display: flex; gap: 20px; margin-bottom: 24px; align-items: center; }
+        .tenant-hero .lease-box { background: #fff; padding: 24px; border-radius: 12px; box-shadow: var(--card-shadow); flex: 1; border-left: 6px solid #3b82f6; }
+        .tenant-hero .lease-box h4 { color: #64748b; margin-bottom: 6px; }
+        .tenant-hero .lease-box .rent-amount { font-size: 28px; font-weight: 700; color: #0f172a; }
+        .admin-users-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
+
+        /* --- Layouts --- */
         .hidden { display: none !important; }
         #loginSection { max-width: 400px; margin: auto; background: #fff; padding: 40px; border-radius: 12px; text-align: center; box-shadow: var(--card-shadow); margin-top: 50px; }
-
-        /* Multi-Step Wizard Styles */
         .wizard-container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: var(--card-shadow); }
         .wizard-step { display: none; }
         .wizard-step.active { display: block; animation: fadeIn 0.3s ease; }
@@ -77,19 +92,12 @@
             .main-content { width: 100%; }
             .top-header { padding: 12px 16px; }
             .page-section { padding: 16px; }
-            .stats-grid { grid-template-columns: 1fr; gap: 12px; }
-            .wizard-container { max-width: 100%; }
-        }
-        @media (max-width: 480px) {
-            .sidebar-brand { font-size: 16px; }
-            .sidebar-dropdown-item { padding: 12px 16px; font-size: 13px; }
-            .stat-card .number { font-size: 24px; }
         }
     </style>
 </head>
 <body>
 <div id="loginSection">
-    <h1>🏠 PropertyPrep</h1>
+    <h1>🏠 PropManage</h1>
     <input type="text" id="loginUser" placeholder="Username" value="manager">
     <input type="password" id="loginPass" placeholder="Password" value="pass123">
     <button onclick="login()">Login to Dashboard</button>
@@ -98,24 +106,19 @@
 <div id="app" class="hidden">
     <aside class="sidebar">
         <div class="sidebar-brand">
-            <span>RentalManager</span>
+            <span>PropManage</span>
             <span class="hamburger" onclick="toggleSidebarMenu()">☰</span>
             <div class="sidebar-dropdown" id="sidebarDropdown">
-                <div id="managerOnlyMenu">
-                    <div class="sidebar-dropdown-item" onclick="switchView('view-tenants')">👥 View Tenants</div>
-                    <div class="sidebar-dropdown-item" onclick="switchView('view-add-tenant')">➕ Add Tenant</div>
-                    <div class="sidebar-dropdown-item" onclick="switchView('view-properties')">🏢 View Properties</div>
-                    <div class="sidebar-dropdown-item" onclick="switchView('view-add-property')">➕ Add Property</div>
-                </div>
-                <div class="sidebar-dropdown-item" onclick="switchView('view-tenant-status')">📊 Tenant Status</div>
+                <!-- Dynamic menu items will be injected here via JS -->
             </div>
         </div>
-        <nav class="sidebar-nav"><div class="nav-link active">📊 Dashboard</div></nav>
+        <nav class="sidebar-nav" id="sidebarNav">
+            <!-- Dynamic navigation links injected here via JS -->
+        </nav>
         <div class="sidebar-footer">
             <span class="user-name" id="userName">Loading...</span>
             <span class="user-email" id="userEmail">Email</span>
-            <span style="font-size: 11px; color: #64748b; margin-top: 2px;" id="userRole">Role</span>
-            <span class="user-subscription" id="userSubscription">Subscription: BASIC</span>
+            <div><span class="user-role-badge" id="userRoleBadge">Role</span></div>
             <span class="property-usage" id="propertyUsage">Properties: 0 / 5</span>
         </div>
     </aside>
@@ -123,8 +126,8 @@
     <div class="main-content">
         <div class="top-header"><h2 id="headerTitle">Dashboard</h2></div>
 
-        <!-- ============ DASHBOARD VIEW ============ -->
-        <div id="view-dashboard" class="page-section active">
+        <!-- ============ LANDLORD DASHBOARD ============ -->
+        <div id="view-landlord-dashboard" class="page-section active">
             <div class="stats-grid">
                 <div class="stat-card"><h4>Occupied</h4><div class="number" id="occupiedCount">0</div></div>
                 <div class="stat-card"><h4>Vacant</h4><div class="number" id="vacantCount">0</div></div>
@@ -136,129 +139,113 @@
             </div>
         </div>
 
-        <!-- ============ VIEW TENANTS ============ -->
+        <!-- ============ LANDLORD: VIEW TENANTS ============ -->
         <div id="view-tenants" class="page-section">
             <div class="card"><h3>My Tenants</h3><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Property</th></tr></thead><tbody id="tenantsListBody"></tbody></table></div>
         </div>
 
-        <!-- ============ ADD TENANT (MULTI‑STEP) ============ -->
+        <!-- ============ LANDLORD: ADD TENANT ============ -->
         <div id="view-add-tenant" class="page-section">
             <div class="wizard-container">
                 <h3>Add New Tenant – Step <span id="stepIndicator">1</span> of 3</h3>
-
-                <!-- Step 1: Personal Information -->
                 <div id="step1" class="wizard-step active">
-                    <div class="form-group">
-                        <label for="fullName">Full Name *</label>
-                        <input type="text" id="fullName" placeholder="John Doe" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="phoneNumber">Phone Number *</label>
-                        <input type="text" id="phoneNumber" placeholder="+254 712 345 678" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="idNumber">ID / Passport Number *</label>
-                        <input type="text" id="idNumber" placeholder="12345678" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" placeholder="john@email.com">
-                    </div>
-                    <div class="wizard-buttons">
-                        <div></div>
-                        <button class="btn-primary" onclick="nextStep(1)">Next →</button>
-                    </div>
+                    <div class="form-group"><label for="fullName">Full Name *</label><input type="text" id="fullName" placeholder="John Doe" required></div>
+                    <div class="form-group"><label for="phoneNumber">Phone Number *</label><input type="text" id="phoneNumber" placeholder="+254 712 345 678" required></div>
+                    <div class="form-group"><label for="email">Email</label><input type="email" id="email" placeholder="john@email.com"></div>
+                    <div class="wizard-buttons"><div></div><button class="btn-primary" onclick="nextStep(1)">Next →</button></div>
                 </div>
-
-                <!-- Step 2: Property & Lease -->
                 <div id="step2" class="wizard-step">
-                    <div class="form-group">
-                        <label for="propertySelect">Select Property *</label>
-                        <select id="propertySelect" required>
-                            <option value="">— Choose a property —</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="leaseStart">Lease Start Date *</label>
-                        <input type="date" id="leaseStart" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="leaseEnd">Lease End Date *</label>
-                        <input type="date" id="leaseEnd" required>
-                    </div>
-                    <div class="wizard-buttons">
-                        <button class="btn-secondary" onclick="prevStep(2)">← Back</button>
-                        <button class="btn-primary" onclick="nextStep(2)">Next →</button>
-                    </div>
+                    <div class="form-group"><label for="propertySelect">Select Property *</label><select id="propertySelect" required><option value="">— Choose a property —</option></select></div>
+                    <div class="form-group"><label for="leaseStart">Lease Start *</label><input type="date" id="leaseStart" required></div>
+                    <div class="form-group"><label for="leaseEnd">Lease End *</label><input type="date" id="leaseEnd" required></div>
+                    <div class="wizard-buttons"><button class="btn-secondary" onclick="prevStep(2)">← Back</button><button class="btn-primary" onclick="nextStep(2)">Next →</button></div>
                 </div>
-
-                <!-- Step 3: Summary & Submit -->
                 <div id="step3" class="wizard-step">
                     <h3>Review & Confirm</h3>
                     <div class="summary-box" id="summary"></div>
-                    <div class="wizard-buttons">
-                        <button class="btn-secondary" onclick="prevStep(3)">← Back</button>
-                        <button class="btn-primary" id="submitTenantBtn">Submit Tenant</button>
-                    </div>
+                    <div class="wizard-buttons"><button class="btn-secondary" onclick="prevStep(3)">← Back</button><button class="btn-primary" id="submitTenantBtn">Submit Tenant</button></div>
                 </div>
             </div>
         </div>
 
-        <!-- ============ VIEW PROPERTIES ============ -->
+        <!-- ============ LANDLORD: VIEW PROPERTIES ============ -->
         <div id="view-properties" class="page-section">
             <div class="card"><h3>My Properties</h3><table><thead><tr><th>Address</th><th>City</th><th>Rent</th><th>Status</th></tr></thead><tbody id="propertiesListBody"></tbody></table></div>
         </div>
 
-        <!-- ============ ADD PROPERTY ============ -->
+        <!-- ============ LANDLORD: ADD PROPERTY ============ -->
         <div id="view-add-property" class="page-section">
-            <div class="card form-card">
-                <h3>Add New Property</h3>
-                <div class="form-group"><label>Address</label><input id="pAddr" placeholder="123 Main St"></div>
-                <div class="form-group"><label>City</label><input id="pCity" placeholder="Nairobi"></div>
-                <div class="form-group"><label>Monthly Rent (KES)</label><input id="pRent" type="number" placeholder="50000"></div>
-                <button class="btn-primary" onclick="addPropertyFromMenu()">Add Property</button>
-            </div>
+            <div class="card"><h3>Add New Property</h3><div class="form-group"><label>Address</label><input id="pAddr" placeholder="123 Main St"></div><div class="form-group"><label>City</label><input id="pCity" placeholder="Nairobi"></div><div class="form-group"><label>Monthly Rent (KES)</label><input id="pRent" type="number" placeholder="50000"></div><button class="btn-primary" onclick="addPropertyFromMenu()">Add Property</button></div>
         </div>
 
-        <!-- ============ TENANT STATUS ============ -->
-        <div id="view-tenant-status" class="page-section">
-            <div class="card"><h3>Payment Status Overview</h3><table><thead><tr><th>Tenant</th><th>Property</th><th>Status</th></tr></thead><tbody id="statusListBody"></tbody></table></div>
+        <!-- ============ TENANT VIEWS ============ -->
+        <div id="view-tenant-home" class="page-section">
+            <div class="tenant-hero">
+                <div class="lease-box"><h4>Your Lease</h4><div class="rent-amount" id="tenantRentAmount">KES 0</div><p style="color: #64748b;">Due on the 5th of every month</p></div>
+                <div class="lease-box" style="border-left-color: #10b981;"><h4>Property</h4><div style="font-size: 20px; font-weight: 600;" id="tenantProperty">Not assigned</div><p style="color: #64748b;" id="tenantPropertyCity">N/A</p></div>
+            </div>
+            <div class="card"><h3>Your Payment History</h3><table><thead><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead><tbody id="tenantPaymentsBody"><tr><td colspan="3" style="text-align:center;">Loading...</td></tr></tbody></table></div>
+        </div>
+
+        <!-- ============ ADMIN VIEWS ============ -->
+        <div id="view-admin-home" class="page-section">
+            <div class="stats-grid">
+                <div class="stat-card"><h4>Total Landlords</h4><div class="number" id="adminLandlords">0</div></div>
+                <div class="stat-card"><h4>Total Tenants</h4><div class="number" id="adminTenants">0</div></div>
+                <div class="stat-card"><h4>Total Properties</h4><div class="number" id="adminProperties">0</div></div>
+            </div>
+            <div class="card"><h3>All Platform Users</h3><table><thead><tr><th>Username</th><th>Email</th><th>Role</th></tr></thead><tbody id="adminUsersBody"></tbody></table></div>
         </div>
     </div>
 </div>
 
 <!-- ============ JAVASCRIPT ============ -->
 <script>
-    const API = '/api';
+    const API = '/api'; // ✅ Uses relative path
     let donutChartInstance = null;
-    let allProperties = [], allPayments = [], allTenants = [];
+    let currentUserRole = null; // Stores 'LANDLORD', 'TENANT', or 'ADMIN'
+    let allProperties = [], allPayments = [], allTenants = [], allUsers = [];
 
     // ---------- AUTO-LOGIN ON PAGE LOAD ----------
     document.addEventListener('DOMContentLoaded', async function() {
         const token = localStorage.getItem('jwtToken');
         if (token) {
-            // Try to validate token by fetching user info
             const user = await apiCall('/auth/me');
-            if (!user.error) {
-                // Token valid – automatically log in
-                document.getElementById('loginSection').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
-                document.getElementById('userName').innerText = user.username || 'User';
-                document.getElementById('userRole').innerText = 'Logged in';
-                await loadUserInfo();
-                await loadAllData();
-                updatePropertyUsage();
-                populatePropertyDropdown();
+            if (!user.error && user.role) {
+                await initApp(user);
                 return;
             } else {
-                // Token expired/invalid – clear it and show login
                 localStorage.removeItem('jwtToken');
             }
         }
-        // No valid token – login section remains visible
+        document.getElementById('loginSection').classList.remove('hidden');
     });
 
-    // ---------- LOGIN (manual) ----------
+    // ---------- INIT APP (After successful login) ----------
+    async function initApp(user) {
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+
+        currentUserRole = user.role; // Expecting 'LANDLORD', 'TENANT', or 'ADMIN'
+
+        document.getElementById('userName').innerText = user.username || 'User';
+        document.getElementById('userEmail').innerText = user.email || 'N/A';
+        document.getElementById('userRoleBadge').innerText = currentUserRole;
+
+        // Render the correct sidebar based on role
+        renderSidebar(currentUserRole);
+
+        await loadAllData(user);
+
+        // Switch to the default view for this role
+        if(currentUserRole === 'LANDLORD') switchView('view-landlord-dashboard');
+        else if(currentUserRole === 'TENANT') switchView('view-tenant-home');
+        else if(currentUserRole === 'ADMIN') switchView('view-admin-home');
+
+        updatePropertyUsage(user);
+    }
+
+    // ---------- LOGIN (Manual) ----------
     async function login() {
         const user = document.getElementById('loginUser').value;
         const pass = document.getElementById('loginPass').value;
@@ -270,18 +257,13 @@
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Login failed');
-
             localStorage.setItem('jwtToken', data.token);
 
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('app').classList.remove('hidden');
-            document.getElementById('userName').innerText = user;
-            document.getElementById('userRole').innerText = 'Logged in';
+            // Refetch user to get role
+            const userData = await apiCall('/auth/me');
+            if(userData.error) throw new Error(userData.error);
 
-            await loadUserInfo();
-            await loadAllData();
-            updatePropertyUsage();
-            populatePropertyDropdown();
+            await initApp(userData);
         } catch(e) {
             alert('Login failed: ' + e.message);
             console.error(e);
@@ -303,16 +285,72 @@
         return res.json();
     }
 
-    // ---------- LOAD USER INFO ----------
-    async function loadUserInfo() {
-        const user = await apiCall('/auth/me');
-        if (!user.error) {
-            document.getElementById('userEmail').innerText = user.email || 'N/A';
-            document.getElementById('userSubscription').innerText = 'Subscription: ' + (user.subscription || 'BASIC');
+    // ---------- SIDEBAR BUILDER ----------
+    function renderSidebar(role) {
+        const nav = document.getElementById('sidebarNav');
+        const dropdown = document.getElementById('sidebarDropdown');
+
+        nav.innerHTML = '';
+        dropdown.innerHTML = '';
+
+        if (role === 'LANDLORD') {
+            const links = [
+                { id: 'view-landlord-dashboard', icon: '📊', label: 'Dashboard' },
+                { id: 'view-properties', icon: '🏢', label: 'Properties' },
+                { id: 'view-tenants', icon: '👥', label: 'Tenants' },
+                { id: 'view-tenant-status', icon: '📈', label: 'Tenant Status' }
+            ];
+            links.forEach(l => {
+                const a = document.createElement('div');
+                a.className = 'nav-link';
+                a.innerHTML = `<i>${l.icon}</i> ${l.label}`;
+                a.onclick = () => switchView(l.id);
+                nav.appendChild(a);
+            });
+
+            // Dropdown menu (for mobile)
+            const dropItems = [
+                { id: 'view-add-tenant', label: '➕ Add Tenant' },
+                { id: 'view-add-property', label: '➕ Add Property' }
+            ];
+            dropItems.forEach(l => {
+                const d = document.createElement('div');
+                d.className = 'sidebar-dropdown-item';
+                d.innerText = l.label;
+                d.onclick = () => { switchView(l.id); document.getElementById('sidebarDropdown').classList.remove('open'); };
+                dropdown.appendChild(d);
+            });
+
+        } else if (role === 'TENANT') {
+            const links = [
+                { id: 'view-tenant-home', icon: '🏠', label: 'My Lease' }
+            ];
+            links.forEach(l => {
+                const a = document.createElement('div');
+                a.className = 'nav-link';
+                a.innerHTML = `<i>${l.icon}</i> ${l.label}`;
+                a.onclick = () => switchView(l.id);
+                nav.appendChild(a);
+            });
+
+        } else if (role === 'ADMIN') {
+            const links = [
+                { id: 'view-admin-home', icon: '👑', label: 'System Overview' }
+            ];
+            links.forEach(l => {
+                const a = document.createElement('div');
+                a.className = 'nav-link';
+                a.innerHTML = `<i>${l.icon}</i> ${l.label}`;
+                a.onclick = () => switchView(l.id);
+                nav.appendChild(a);
+            });
         }
+
+        // Highlight first item
+        const firstLink = nav.querySelector('.nav-link');
+        if(firstLink) firstLink.classList.add('active');
     }
 
-    // ---------- SIDEBAR / VIEWS ----------
     function toggleSidebarMenu() { document.getElementById('sidebarDropdown').classList.toggle('open'); }
 
     function switchView(viewId) {
@@ -322,29 +360,36 @@
         if (!target) target = document.getElementById('view-' + viewId);
         if (target) {
             target.classList.add('active');
-            let title = target.querySelector('h3')?.innerText;
-            if (!title) title = viewId.replace('-', ' ');
-            document.getElementById('headerTitle').innerText = title;
+            document.getElementById('headerTitle').innerText = target.querySelector('h3')?.innerText || viewId.replace(/-/g, ' ');
         }
+
+        // Refresh data when switching views
         if (viewId === 'view-tenants') renderTenantsTable();
         if (viewId === 'view-properties') renderPropertiesTable();
-        if (viewId === 'view-tenant-status') renderStatusTable();
+        if (viewId === 'view-landlord-dashboard') renderDashboard();
     }
 
     // ---------- LOAD ALL DATA ----------
-    async function loadAllData() {
-        allProperties = await apiCall('/manager/my-properties');
-        allPayments = await apiCall('/manager/my-payments');
-        allTenants = await apiCall('/manager/my-tenants');
-        renderDashboard();
-        renderPropertiesTable();
-        renderTenantsTable();
-        renderStatusTable();
-        updatePropertyUsage();
-        populatePropertyDropdown();
+    async function loadAllData(user) {
+        if (currentUserRole === 'LANDLORD') {
+            allProperties = await apiCall('/manager/my-properties');
+            allPayments = await apiCall('/manager/my-payments');
+            allTenants = await apiCall('/manager/my-tenants');
+            renderDashboard();
+            renderPropertiesTable();
+            renderTenantsTable();
+            populatePropertyDropdown();
+        } else if (currentUserRole === 'TENANT') {
+            // Mock tenant data - replace with actual API calls like '/tenant/my-lease'
+            const lease = await apiCall('/tenant/my-lease');
+            if(!lease.error) renderTenantHome(lease);
+        } else if (currentUserRole === 'ADMIN') {
+            allUsers = await apiCall('/admin/all-users');
+            renderAdminHome();
+        }
     }
 
-    // ---------- RENDER DASHBOARD ----------
+    // ---------- LANDLORD DASHBOARD RENDER ----------
     function renderDashboard() {
         let props = Array.isArray(allProperties) ? allProperties : [];
         const total = props.length;
@@ -379,17 +424,35 @@
         else tbody.innerHTML = tenants.map(t => `<tr><td>${t.username}</td><td>${t.email}</td><td>${t.phone || 'N/A'}</td><td>${t.currentProperty?.address || 'Not assigned'}</td></tr>`).join('');
     }
 
-    function renderStatusTable() {
-        const payments = Array.isArray(allPayments) ? allPayments : [];
-        const tbody = document.getElementById('statusListBody');
-        if(payments.length === 0) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8;">No payment records found.</td></tr>`;
-        else tbody.innerHTML = payments.map(p => `<tr><td>${p.lease?.tenant?.username || "Tenant"}</td><td>${p.lease?.property?.address || "Unit"}</td><td><span class="badge ${p.status === 'PAID' ? 'badge-paid' : p.status === 'OVERDUE' ? 'badge-overdue' : 'badge-pending'}">${p.status || 'PENDING'}</span></td></tr>`).join('');
+    // ---------- TENANT RENDER ----------
+    function renderTenantHome(lease) {
+        document.getElementById('tenantRentAmount').innerText = `KES ${lease.monthlyRent?.toLocaleString() || 0}`;
+        document.getElementById('tenantProperty').innerText = lease.property?.address || 'Not assigned';
+        document.getElementById('tenantPropertyCity').innerText = lease.property?.city || 'N/A';
+        const tbody = document.getElementById('tenantPaymentsBody');
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">You currently have no payments listed.</td></tr>`;
+    }
+
+    // ---------- ADMIN RENDER ----------
+    function renderAdminHome() {
+        const users = Array.isArray(allUsers) ? allUsers : [];
+        const landlords = users.filter(u => u.role === 'LANDLORD');
+        const tenants = users.filter(u => u.role === 'TENANT');
+        document.getElementById('adminLandlords').innerText = landlords.length;
+        document.getElementById('adminTenants').innerText = tenants.length;
+        document.getElementById('adminProperties').innerText = '0'; // Replace with backend endpoint when ready
+
+        const tbody = document.getElementById('adminUsersBody');
+        if(users.length === 0) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No users registered.</td></tr>`;
+        else tbody.innerHTML = users.map(u => `<tr><td>${u.username}</td><td>${u.email}</td><td><span class="badge" style="background:#e2e8f0;">${u.role}</span></td></tr>`).join('');
     }
 
     // ---------- PROPERTY USAGE ----------
-    async function updatePropertyUsage() {
-        const user = await apiCall('/auth/me');
-        if (user.error) return;
+    async function updatePropertyUsage(user) {
+        if (currentUserRole !== 'LANDLORD') {
+            document.getElementById('propertyUsage').style.display = 'none';
+            return;
+        }
         const props = Array.isArray(allProperties) ? allProperties : [];
         const count = props.length;
         let max = 5;
@@ -418,35 +481,22 @@
         if (currentStep === 1) {
             const fullName = document.getElementById('fullName').value.trim();
             const phone = document.getElementById('phoneNumber').value.trim();
-            const id = document.getElementById('idNumber').value.trim();
-            if (!fullName || !phone || !id) {
-                alert('Please fill in Name, Phone, and ID Number.');
-                return;
-            }
+            if (!fullName || !phone) { alert('Please fill in Name and Phone.'); return; }
         }
         if (currentStep === 2) {
             const prop = document.getElementById('propertySelect').value;
             const start = document.getElementById('leaseStart').value;
             const end = document.getElementById('leaseEnd').value;
-            if (!prop || !start || !end) {
-                alert('Please select a property and lease dates.');
-                return;
-            }
-            if (new Date(end) <= new Date(start)) {
-                alert('End date must be after start date.');
-                return;
-            }
+            if (!prop || !start || !end) { alert('Please select a property and lease dates.'); return; }
+            if (new Date(end) <= new Date(start)) { alert('End date must be after start date.'); return; }
         }
-
         const currentEl = document.getElementById(`step${currentStep}`);
         const nextEl = document.getElementById(`step${currentStep + 1}`);
         if (nextEl) {
             currentEl.classList.remove('active');
             nextEl.classList.add('active');
             document.getElementById('stepIndicator').innerText = currentStep + 1;
-            if (currentStep + 1 === 3) {
-                updateSummary();
-            }
+            if (currentStep + 1 === 3) { updateSummary(); }
         }
     }
 
@@ -461,28 +511,14 @@
     }
 
     function updateSummary() {
-        const fullName = document.getElementById('fullName').value.trim();
-        const phone = document.getElementById('phoneNumber').value.trim();
-        const id = document.getElementById('idNumber').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const propId = document.getElementById('propertySelect').value;
-        const start = document.getElementById('leaseStart').value;
-        const end = document.getElementById('leaseEnd').value;
-
-        const prop = allProperties.find(p => p.id == propId);
-        const propText = prop ? prop.address : 'Not selected';
-
         document.getElementById('summary').innerHTML = `
-                <p><strong>Name:</strong> ${fullName}</p>
-                <p><strong>Phone:</strong> ${phone}</p>
-                <p><strong>ID:</strong> ${id}</p>
-                <p><strong>Email:</strong> ${email || 'Not provided'}</p>
-                <p><strong>Property:</strong> ${propText}</p>
-                <p><strong>Lease:</strong> ${start} → ${end}</p>
-            `;
+            <p><strong>Name:</strong> ${document.getElementById('fullName').value}</p>
+            <p><strong>Phone:</strong> ${document.getElementById('phoneNumber').value}</p>
+            <p><strong>Property:</strong> ${document.getElementById('propertySelect').selectedOptions[0].text}</p>
+            <p><strong>Lease:</strong> ${document.getElementById('leaseStart').value} → ${document.getElementById('leaseEnd').value}</p>
+        `;
     }
 
-    // ---------- SUBMIT TENANT ----------
     document.getElementById('submitTenantBtn').addEventListener('click', async function() {
         const fullName = document.getElementById('fullName').value.trim();
         const phone = document.getElementById('phoneNumber').value.trim();
@@ -496,36 +532,28 @@
 
         const tenantDto = { username, password, email };
         const tenantResult = await apiCall('/manager/create-tenant', 'POST', tenantDto);
-        if (tenantResult.error) {
-            alert('Failed to create tenant: ' + tenantResult.error);
-            return;
-        }
+        if (tenantResult.error) { alert('Failed to create tenant: ' + tenantResult.error); return; }
 
         const tenants = await apiCall('/manager/my-tenants');
         const newTenant = tenants.find(t => t.username === username);
-        if (!newTenant) {
-            alert('Tenant created but could not assign lease. Please assign manually.');
-            return;
-        }
+        if (!newTenant) { alert('Tenant created but could not assign lease. Please assign manually.'); return; }
 
         const leaseResult = await apiCall(`/manager/assign-lease?tenantId=${newTenant.id}&propertyId=${propId}`, 'POST');
-        if (leaseResult.error) {
-            alert('Failed to assign lease: ' + leaseResult.error);
-            return;
-        }
+        if (leaseResult.error) { alert('Failed to assign lease: ' + leaseResult.error); return; }
 
         alert('Tenant created and lease assigned successfully!');
+        document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+        document.getElementById('step1').classList.add('active');
+        document.getElementById('stepIndicator').innerText = '1';
+
         document.getElementById('fullName').value = '';
         document.getElementById('phoneNumber').value = '';
-        document.getElementById('idNumber').value = '';
         document.getElementById('email').value = '';
         document.getElementById('propertySelect').value = '';
         document.getElementById('leaseStart').value = '';
         document.getElementById('leaseEnd').value = '';
-        document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
-        document.getElementById('step1').classList.add('active');
-        document.getElementById('stepIndicator').innerText = '1';
-        await loadAllData();
+
+        await loadAllData({});
         switchView('view-tenants');
     });
 
@@ -546,7 +574,6 @@
             allProperties = await apiCall('/manager/my-properties');
             renderPropertiesTable();
             renderDashboard();
-            updatePropertyUsage();
             populatePropertyDropdown();
         }
     }

@@ -8,4 +8,7 @@ import java.util.List;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByLease(LeaseAgreement lease);
+
+    // ✅ NEW: Find specific payment by lease, method, and status
+    List<Payment> findByLeaseAndPaymentMethodAndStatus(LeaseAgreement lease, String paymentMethod, String status);
 }

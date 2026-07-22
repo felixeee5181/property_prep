@@ -19,4 +19,7 @@ public class Payment {
     private LocalDate dueDate;
     private LocalDate paidDate;
     private String status; // PENDING, PAID, OVERDUE
+
+    // ✅ NEW FIELD: Track payment method
+    private String paymentMethod; // STRIPE, MPESA, CASH
 }

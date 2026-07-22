@@ -12,7 +12,7 @@
         body { background: #e2e8f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
         #app { width: 100%; max-width: 1400px; height: 90vh; max-height: 950px; display: flex; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); background: #fff; }
 
-        /* --- Sidebar --- */
+        /* Sidebar */
         .sidebar { width: 260px; background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; }
         .sidebar-brand { padding: 24px; font-size: 20px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; position: relative; }
         .sidebar-brand .hamburger { font-size: 28px; cursor: pointer; color: #94a3b8; user-select: none; padding: 0 4px; border-radius: 4px; transition: 0.2s; }
@@ -32,7 +32,7 @@
         .sidebar-footer .user-role-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 12px; background: rgba(255,255,255,0.1); display: inline-block; margin-top: 2px; }
         .sidebar-footer .property-usage { font-size: 11px; color: #94a3b8; margin-top: 4px; }
 
-        /* --- Main Content --- */
+        /* Main Content */
         .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background: var(--bg-light); }
         .top-header { background: #fff; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
         .top-header h2 { font-size: 20px; color: var(--text-main); }
@@ -40,7 +40,7 @@
         .page-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- Shared Components --- */
+        /* Shared Components */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-bottom: 24px; }
         .stat-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: var(--card-shadow); }
         .stat-card .number { font-size: 32px; font-weight: 700; }
@@ -54,33 +54,36 @@
         .badge-pending { background: #fef3c7; color: #92400e; }
         .badge-overdue { background: #fee2e2; color: #991b1b; }
 
-        /* --- Tenant / Admin Specific Grids --- */
-        .tenant-hero { display: flex; gap: 20px; margin-bottom: 24px; align-items: center; }
-        .tenant-hero .lease-box { background: #fff; padding: 24px; border-radius: 12px; box-shadow: var(--card-shadow); flex: 1; border-left: 6px solid #3b82f6; }
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000; }
+        .modal-content { background:#fff; max-width:500px; width:90%; padding:30px; border-radius:16px; box-shadow:var(--card-shadow); }
+        .modal-content h3 { margin-bottom:20px; }
+        .payment-fields { margin:15px 0; }
+        .payment-fields.hidden { display:none; }
+
+        /* Tenant Hero */
+        .tenant-hero { display: flex; gap: 20px; margin-bottom: 24px; align-items: center; flex-wrap:wrap; }
+        .tenant-hero .lease-box { background: #fff; padding: 24px; border-radius: 12px; box-shadow: var(--card-shadow); flex:1; border-left: 6px solid #3b82f6; }
         .tenant-hero .lease-box h4 { color: #64748b; margin-bottom: 6px; }
         .tenant-hero .lease-box .rent-amount { font-size: 28px; font-weight: 700; color: #0f172a; }
+
+        /* Admin */
         .admin-users-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
 
-        /* --- Layouts --- */
         .hidden { display: none !important; }
         #loginSection { max-width: 400px; margin: auto; background: #fff; padding: 40px; border-radius: 12px; text-align: center; box-shadow: var(--card-shadow); margin-top: 50px; }
         .wizard-container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: var(--card-shadow); }
         .wizard-step { display: none; }
-        .wizard-step.active { display: block; animation: fadeIn 0.3s ease; }
-        .wizard-step h3 { margin-bottom: 20px; color: var(--text-main); }
+        .wizard-step.active { display: block; }
+        .wizard-step h3 { margin-bottom: 20px; }
         .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-weight: 600; margin-bottom: 4px; color: #334155; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 4px; }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--active-blue); }
-        .wizard-buttons { display: flex; justify-content: space-between; margin-top: 20px; }
         .btn-secondary { background: #e2e8f0; color: #334155; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
         .btn-secondary:hover { background: #cbd5e1; }
         .btn-primary { background: var(--active-blue); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
         .btn-primary:hover { background: #2563eb; }
-        .summary-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
-        .summary-box p { margin: 5px 0; }
 
-        /* Responsive */
         @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
             body { padding: 0; }
@@ -92,14 +95,15 @@
             .main-content { width: 100%; }
             .top-header { padding: 12px 16px; }
             .page-section { padding: 16px; }
+            .modal-content { width: 95%; padding:20px; }
         }
     </style>
 </head>
 <body>
 <div id="loginSection">
     <h1>🏠 PropManage</h1>
-    <input type="text" id="loginUser" placeholder="Username" value="manager">
-    <input type="password" id="loginPass" placeholder="Password" value="pass123">
+    <input type="text" id="loginUser" placeholder="Username">
+    <input type="password" id="loginPass" placeholder="Password">
     <button onclick="login()">Login to Dashboard</button>
 </div>
 
@@ -108,13 +112,9 @@
         <div class="sidebar-brand">
             <span>PropManage</span>
             <span class="hamburger" onclick="toggleSidebarMenu()">☰</span>
-            <div class="sidebar-dropdown" id="sidebarDropdown">
-                <!-- Dynamic menu items will be injected here via JS -->
-            </div>
+            <div class="sidebar-dropdown" id="sidebarDropdown"></div>
         </div>
-        <nav class="sidebar-nav" id="sidebarNav">
-            <!-- Dynamic navigation links injected here via JS -->
-        </nav>
+        <nav class="sidebar-nav" id="sidebarNav"></nav>
         <div class="sidebar-footer">
             <span class="user-name" id="userName">Loading...</span>
             <span class="user-email" id="userEmail">Email</span>
@@ -135,7 +135,12 @@
             </div>
             <div class="dashboard-grid">
                 <div class="card"><h3>Occupancy</h3><div style="height: 180px;"><canvas id="occupancyDonut"></canvas></div></div>
-                <div class="card"><h3>Recent Payments</h3><table><thead><tr><th>Tenant</th><th>Unit</th><th>Amount</th><th>Status</th></tr></thead><tbody id="paymentsTableBody"><tr><td colspan="4" style="text-align:center;">Loading...</td></tr></tbody></table></div>
+                <div class="card"><h3>Recent Payments</h3><table><thead><tr><th>Tenant</th><th>Unit</th><th>Amount</th><th>Status</th></tr></thead><tbody id="paymentsTableBody"></tbody></table></div>
+            </div>
+            <!-- Cash Payments -->
+            <div class="card" style="margin-top:20px;">
+                <h3>Pending Cash Payments</h3>
+                <table><thead><tr><th>Tenant</th><th>Amount</th><th>Due Date</th><th>Action</th></tr></thead><tbody id="cashPaymentsBody"></tbody></table>
             </div>
         </div>
 
@@ -149,15 +154,15 @@
             <div class="wizard-container">
                 <h3>Add New Tenant – Step <span id="stepIndicator">1</span> of 3</h3>
                 <div id="step1" class="wizard-step active">
-                    <div class="form-group"><label for="fullName">Full Name *</label><input type="text" id="fullName" placeholder="John Doe" required></div>
-                    <div class="form-group"><label for="phoneNumber">Phone Number *</label><input type="text" id="phoneNumber" placeholder="+254 712 345 678" required></div>
-                    <div class="form-group"><label for="email">Email</label><input type="email" id="email" placeholder="john@email.com"></div>
+                    <div class="form-group"><label>Full Name *</label><input type="text" id="fullName" placeholder="John Doe" required></div>
+                    <div class="form-group"><label>Phone Number *</label><input type="text" id="phoneNumber" placeholder="+254 712 345 678" required></div>
+                    <div class="form-group"><label>Email</label><input type="email" id="email" placeholder="john@email.com"></div>
                     <div class="wizard-buttons"><div></div><button class="btn-primary" onclick="nextStep(1)">Next →</button></div>
                 </div>
                 <div id="step2" class="wizard-step">
-                    <div class="form-group"><label for="propertySelect">Select Property *</label><select id="propertySelect" required><option value="">— Choose a property —</option></select></div>
-                    <div class="form-group"><label for="leaseStart">Lease Start *</label><input type="date" id="leaseStart" required></div>
-                    <div class="form-group"><label for="leaseEnd">Lease End *</label><input type="date" id="leaseEnd" required></div>
+                    <div class="form-group"><label>Select Property *</label><select id="propertySelect" required><option value="">— Choose a property —</option></select></div>
+                    <div class="form-group"><label>Lease Start *</label><input type="date" id="leaseStart" required></div>
+                    <div class="form-group"><label>Lease End *</label><input type="date" id="leaseEnd" required></div>
                     <div class="wizard-buttons"><button class="btn-secondary" onclick="prevStep(2)">← Back</button><button class="btn-primary" onclick="nextStep(2)">Next →</button></div>
                 </div>
                 <div id="step3" class="wizard-step">
@@ -178,16 +183,17 @@
             <div class="card"><h3>Add New Property</h3><div class="form-group"><label>Address</label><input id="pAddr" placeholder="123 Main St"></div><div class="form-group"><label>City</label><input id="pCity" placeholder="Nairobi"></div><div class="form-group"><label>Monthly Rent (KES)</label><input id="pRent" type="number" placeholder="50000"></div><button class="btn-primary" onclick="addPropertyFromMenu()">Add Property</button></div>
         </div>
 
-        <!-- ============ TENANT VIEWS ============ -->
+        <!-- ============ TENANT VIEW ============ -->
         <div id="view-tenant-home" class="page-section">
             <div class="tenant-hero">
                 <div class="lease-box"><h4>Your Lease</h4><div class="rent-amount" id="tenantRentAmount">KES 0</div><p style="color: #64748b;">Due on the 5th of every month</p></div>
                 <div class="lease-box" style="border-left-color: #10b981;"><h4>Property</h4><div style="font-size: 20px; font-weight: 600;" id="tenantProperty">Not assigned</div><p style="color: #64748b;" id="tenantPropertyCity">N/A</p></div>
+                <div><button class="btn-primary" onclick="openPaymentModal()">Pay Rent</button></div>
             </div>
-            <div class="card"><h3>Your Payment History</h3><table><thead><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead><tbody id="tenantPaymentsBody"><tr><td colspan="3" style="text-align:center;">Loading...</td></tr></tbody></table></div>
+            <div class="card"><h3>Your Payment History</h3><table><thead><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead><tbody id="tenantPaymentsBody"></tbody></table></div>
         </div>
 
-        <!-- ============ ADMIN VIEWS ============ -->
+        <!-- ============ ADMIN VIEW ============ -->
         <div id="view-admin-home" class="page-section">
             <div class="stats-grid">
                 <div class="stat-card"><h4>Total Landlords</h4><div class="number" id="adminLandlords">0</div></div>
@@ -195,18 +201,75 @@
                 <div class="stat-card"><h4>Total Properties</h4><div class="number" id="adminProperties">0</div></div>
             </div>
             <div class="card"><h3>All Platform Users</h3><table><thead><tr><th>Username</th><th>Email</th><th>Role</th></tr></thead><tbody id="adminUsersBody"></tbody></table></div>
+            <div class="card" style="margin-top:20px;">
+                <h3>Manage Manager Subscriptions</h3>
+                <table><thead><tr><th>Manager</th><th>Current Tier</th><th>Properties</th><th>Action</th></tr></thead><tbody id="managerSubscriptionBody"></tbody></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ PAYMENT MODAL ============ -->
+<div id="paymentModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Pay Your Rent</h3>
+        <p><strong>Amount:</strong> <span id="modalRentAmount">KES 0</span></p>
+        <div class="form-group">
+            <label>Choose payment method</label>
+            <div style="display:flex; gap:15px; margin:10px 0;">
+                <label><input type="radio" name="paymentMethod" value="stripe" checked> Stripe</label>
+                <label><input type="radio" name="paymentMethod" value="mpesa"> M‑Pesa</label>
+                <label><input type="radio" name="paymentMethod" value="cash"> Cash</label>
+            </div>
+        </div>
+        <div id="stripeFields" class="payment-fields">
+            <div id="card-element" style="border:1px solid #e2e8f0; padding:12px; border-radius:8px;"></div>
+        </div>
+        <div id="mpesaFields" class="payment-fields hidden">
+            <div class="form-group">
+                <label>Phone Number (e.g. 0712345678)</label>
+                <input type="text" id="mpesaPhone" placeholder="0712345678" />
+            </div>
+        </div>
+        <div id="cashFields" class="payment-fields hidden">
+            <p>You’ll pay cash to your landlord. We’ll notify them and send you a receipt once they confirm.</p>
+        </div>
+        <div style="margin-top:20px; display:flex; gap:12px;">
+            <button class="btn-secondary" onclick="closePaymentModal()">Cancel</button>
+            <button class="btn-primary" id="payButton" onclick="processPayment()">Pay Now</button>
         </div>
     </div>
 </div>
 
 <!-- ============ JAVASCRIPT ============ -->
-<script>
-    const API = '/api'; // ✅ Uses relative path
-    let donutChartInstance = null;
-    let currentUserRole = null; // Stores 'LANDLORD', 'TENANT', or 'ADMIN'
-    let allProperties = [], allPayments = [], allTenants = [], allUsers = [];
+<script>let STRIPE_PUBLISHABLE_KEY = '';
 
-    // ---------- AUTO-LOGIN ON PAGE LOAD ----------
+// Fetch the publishable key from backend before doing anything Stripe-related
+async function loadStripeKey() {
+    try {
+        const res = await fetch('/api/config/stripe-publishable-key');
+        if (!res.ok) throw new Error('Failed to fetch Stripe key');
+        STRIPE_PUBLISHABLE_KEY = await res.text();
+        console.log('Stripe publishable key loaded');
+    } catch (err) {
+        console.error('Could not load Stripe key:', err);
+        // fallback to a hardcoded key (optional) or show error
+        STRIPE_PUBLISHABLE_KEY = 'pk_test_...'; // optional fallback
+    }
+}
+
+// Call it immediately
+loadStripeKey();
+    const API = '/api';  // Relative to current domai
+
+    let donutChartInstance = null;
+    let currentUserRole = null;
+    let allProperties = [], allPayments = [], allTenants = [], allUsers = [], allManagers = [];
+    let stripeCardElement = null;
+    let currentLeaseId = null;
+    let currentRentAmount = 0;
+
+    // ---------- AUTO-LOGIN ----------
     document.addEventListener('DOMContentLoaded', async function() {
         const token = localStorage.getItem('jwtToken');
         if (token) {
@@ -221,31 +284,25 @@
         document.getElementById('loginSection').classList.remove('hidden');
     });
 
-    // ---------- INIT APP (After successful login) ----------
+    // ---------- INIT APP ----------
     async function initApp(user) {
         document.getElementById('loginSection').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
-
-        currentUserRole = user.role; // Expecting 'LANDLORD', 'TENANT', or 'ADMIN'
-
+        currentUserRole = user.role;
         document.getElementById('userName').innerText = user.username || 'User';
         document.getElementById('userEmail').innerText = user.email || 'N/A';
         document.getElementById('userRoleBadge').innerText = currentUserRole;
 
-        // Render the correct sidebar based on role
         renderSidebar(currentUserRole);
-
         await loadAllData(user);
 
-        // Switch to the default view for this role
         if(currentUserRole === 'LANDLORD') switchView('view-landlord-dashboard');
         else if(currentUserRole === 'TENANT') switchView('view-tenant-home');
         else if(currentUserRole === 'ADMIN') switchView('view-admin-home');
-
         updatePropertyUsage(user);
     }
 
-    // ---------- LOGIN (Manual) ----------
+    // ---------- LOGIN ----------
     async function login() {
         const user = document.getElementById('loginUser').value;
         const pass = document.getElementById('loginPass').value;
@@ -258,15 +315,11 @@
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Login failed');
             localStorage.setItem('jwtToken', data.token);
-
-            // Refetch user to get role
             const userData = await apiCall('/auth/me');
             if(userData.error) throw new Error(userData.error);
-
             await initApp(userData);
         } catch(e) {
             alert('Login failed: ' + e.message);
-            console.error(e);
         }
     }
 
@@ -285,11 +338,10 @@
         return res.json();
     }
 
-    // ---------- SIDEBAR BUILDER ----------
+    // ---------- SIDEBAR ----------
     function renderSidebar(role) {
         const nav = document.getElementById('sidebarNav');
         const dropdown = document.getElementById('sidebarDropdown');
-
         nav.innerHTML = '';
         dropdown.innerHTML = '';
 
@@ -297,8 +349,7 @@
             const links = [
                 { id: 'view-landlord-dashboard', icon: '📊', label: 'Dashboard' },
                 { id: 'view-properties', icon: '🏢', label: 'Properties' },
-                { id: 'view-tenants', icon: '👥', label: 'Tenants' },
-                { id: 'view-tenant-status', icon: '📈', label: 'Tenant Status' }
+                { id: 'view-tenants', icon: '👥', label: 'Tenants' }
             ];
             links.forEach(l => {
                 const a = document.createElement('div');
@@ -307,8 +358,6 @@
                 a.onclick = () => switchView(l.id);
                 nav.appendChild(a);
             });
-
-            // Dropdown menu (for mobile)
             const dropItems = [
                 { id: 'view-add-tenant', label: '➕ Add Tenant' },
                 { id: 'view-add-property', label: '➕ Add Property' }
@@ -320,11 +369,8 @@
                 d.onclick = () => { switchView(l.id); document.getElementById('sidebarDropdown').classList.remove('open'); };
                 dropdown.appendChild(d);
             });
-
         } else if (role === 'TENANT') {
-            const links = [
-                { id: 'view-tenant-home', icon: '🏠', label: 'My Lease' }
-            ];
+            const links = [{ id: 'view-tenant-home', icon: '🏠', label: 'My Lease' }];
             links.forEach(l => {
                 const a = document.createElement('div');
                 a.className = 'nav-link';
@@ -332,11 +378,8 @@
                 a.onclick = () => switchView(l.id);
                 nav.appendChild(a);
             });
-
         } else if (role === 'ADMIN') {
-            const links = [
-                { id: 'view-admin-home', icon: '👑', label: 'System Overview' }
-            ];
+            const links = [{ id: 'view-admin-home', icon: '👑', label: 'System Overview' }];
             links.forEach(l => {
                 const a = document.createElement('div');
                 a.className = 'nav-link';
@@ -345,8 +388,6 @@
                 nav.appendChild(a);
             });
         }
-
-        // Highlight first item
         const firstLink = nav.querySelector('.nav-link');
         if(firstLink) firstLink.classList.add('active');
     }
@@ -357,19 +398,17 @@
         document.getElementById('sidebarDropdown').classList.remove('open');
         document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
         let target = document.getElementById(viewId);
-        if (!target) target = document.getElementById('view-' + viewId);
         if (target) {
             target.classList.add('active');
             document.getElementById('headerTitle').innerText = target.querySelector('h3')?.innerText || viewId.replace(/-/g, ' ');
         }
-
-        // Refresh data when switching views
+        // Refresh data
         if (viewId === 'view-tenants') renderTenantsTable();
         if (viewId === 'view-properties') renderPropertiesTable();
         if (viewId === 'view-landlord-dashboard') renderDashboard();
     }
 
-    // ---------- LOAD ALL DATA ----------
+    // ---------- LOAD DATA ----------
     async function loadAllData(user) {
         if (currentUserRole === 'LANDLORD') {
             allProperties = await apiCall('/manager/my-properties');
@@ -378,18 +417,19 @@
             renderDashboard();
             renderPropertiesTable();
             renderTenantsTable();
+            renderCashPayments();
             populatePropertyDropdown();
         } else if (currentUserRole === 'TENANT') {
-            // Mock tenant data - replace with actual API calls like '/tenant/my-lease'
             const lease = await apiCall('/tenant/my-lease');
             if(!lease.error) renderTenantHome(lease);
         } else if (currentUserRole === 'ADMIN') {
             allUsers = await apiCall('/admin/all-users');
+            allManagers = await apiCall('/admin/managers');
             renderAdminHome();
         }
     }
 
-    // ---------- LANDLORD DASHBOARD RENDER ----------
+    // ---------- LANDLORD DASHBOARD ----------
     function renderDashboard() {
         let props = Array.isArray(allProperties) ? allProperties : [];
         const total = props.length;
@@ -410,41 +450,226 @@
         else tbody.innerHTML = payments.map(p => `<tr><td>${p.lease?.tenant?.username || "Tenant"}</td><td>${p.lease?.property?.address || "Unit"}</td><td>KES ${p.amount?.toLocaleString() || 0}</td><td><span class="badge ${p.status === 'PAID' ? 'badge-paid' : p.status === 'OVERDUE' ? 'badge-overdue' : 'badge-pending'}">${p.status || 'PENDING'}</span></td></tr>`).join('');
     }
 
+    // ---------- CASH PAYMENTS ----------
+    async function renderCashPayments() {
+        // Fetch pending cash payments from the backend
+        const response = await apiCall('/payments/cash-pending');
+        const cashPayments = response.error ? [] : response;
+        const tbody = document.getElementById('cashPaymentsBody');
+        if(cashPayments.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No cash payments pending</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = cashPayments.map(p => `
+            <tr>
+                <td>${p.lease?.tenant?.username || 'Unknown'}</td>
+                <td>KES ${p.amount?.toLocaleString() || 0}</td>
+                <td>${p.dueDate ? new Date(p.dueDate).toLocaleDateString() : 'N/A'}</td>
+                <td><button class="btn-primary" onclick="markCashPaid(${p.id})">Mark as Paid</button></td>
+            </tr>
+        `).join('');
+    }
+
+    async function markCashPaid(paymentId) {
+        if (!confirm('Confirm that you have received the cash payment?')) return;
+        const res = await fetch(`/api/payments/cash/${paymentId}`, { method: 'POST' });
+        if (!res.ok) {
+            alert('Failed: ' + await res.text());
+            return;
+        }
+        alert('Payment marked as paid! Receipt sent to tenant and you.');
+        await loadAllData(null);
+        renderCashPayments();
+    }
+
+    // ---------- LANDLORD TABLES ----------
     function renderPropertiesTable() {
         const props = Array.isArray(allProperties) ? allProperties : [];
         const tbody = document.getElementById('propertiesListBody');
-        if(props.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No properties added yet.</td></tr>`;
+        if(props.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No properties added yet.</td></tr>`;
         else tbody.innerHTML = props.map(p => `<tr><td>${p.address}</td><td>${p.city}</td><td>KES ${p.monthlyRent}</td><td>${p.occupied ? '🟢 Occupied' : '🔴 Vacant'}</td></tr>`).join('');
     }
 
     function renderTenantsTable() {
         const tenants = Array.isArray(allTenants) ? allTenants : [];
         const tbody = document.getElementById('tenantsListBody');
-        if(tenants.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No tenants added yet.</td></tr>`;
+        if(tenants.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No tenants added yet.</td></tr>`;
         else tbody.innerHTML = tenants.map(t => `<tr><td>${t.username}</td><td>${t.email}</td><td>${t.phone || 'N/A'}</td><td>${t.currentProperty?.address || 'Not assigned'}</td></tr>`).join('');
     }
 
-    // ---------- TENANT RENDER ----------
+    // ---------- TENANT HOME ----------
     function renderTenantHome(lease) {
-        document.getElementById('tenantRentAmount').innerText = `KES ${lease.monthlyRent?.toLocaleString() || 0}`;
+        currentLeaseId = lease.id;
+        currentRentAmount = lease.monthlyRent || 0;
+        document.getElementById('tenantRentAmount').innerText = `KES ${currentRentAmount.toLocaleString()}`;
         document.getElementById('tenantProperty').innerText = lease.property?.address || 'Not assigned';
         document.getElementById('tenantPropertyCity').innerText = lease.property?.city || 'N/A';
         const tbody = document.getElementById('tenantPaymentsBody');
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">You currently have no payments listed.</td></tr>`;
+        // You could fetch tenant payments from an endpoint; for demo we show a placeholder
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No payment history available.</td></tr>`;
     }
 
-    // ---------- ADMIN RENDER ----------
+    // ---------- PAYMENT MODAL ----------
+    function openPaymentModal() {
+        if (!currentLeaseId) {
+            alert('No active lease found. Please contact your landlord.');
+            return;
+        }
+        document.getElementById('modalRentAmount').innerText = `KES ${currentRentAmount.toLocaleString()}`;
+        document.getElementById('paymentModal').style.display = 'flex';
+        // Reset fields
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(r => r.checked = false);
+        document.querySelector('input[name="paymentMethod"][value="stripe"]').checked = true;
+        togglePaymentFields();
+        // Mount Stripe element if not already
+        if (!stripeCardElement) {
+            const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+            const elements = stripe.elements();
+            stripeCardElement = elements.create('card');
+            stripeCardElement.mount('#card-element');
+        }
+        function openPaymentModal() {
+            // ... existing checks ...
+            document.getElementById('paymentModal').style.display = 'flex';
+            // ...
+            // Mount Stripe element if not already
+            if (!stripeCardElement) {
+                if (!STRIPE_PUBLISHABLE_KEY) {
+                    alert('Stripe configuration not loaded. Please refresh.');
+                    return;
+                }
+                const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+                const elements = stripe.elements();
+                stripeCardElement = elements.create('card');
+                stripeCardElement.mount('#card-element');
+            }
+        }
+    }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+    }
+
+    function togglePaymentFields() {
+        const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+        document.getElementById('stripeFields').classList.toggle('hidden', method !== 'stripe');
+        document.getElementById('mpesaFields').classList.toggle('hidden', method !== 'mpesa');
+        document.getElementById('cashFields').classList.toggle('hidden', method !== 'cash');
+    }
+
+    document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+        radio.addEventListener('change', togglePaymentFields);
+    });
+
+    async function processPayment() {
+        const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+        const btn = document.getElementById('payButton');
+        btn.disabled = true;
+        btn.innerText = 'Processing...';
+
+        try {
+            if (method === 'stripe') {
+                // Create payment intent
+                const response = await fetch(`/api/payments/create-intent?leaseId=${currentLeaseId}`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Failed to create intent');
+                const { clientSecret } = data;
+                const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+                const { error } = await stripe.confirmCardPayment(clientSecret, {
+                    payment_method: { card: stripeCardElement }
+                });
+                if (error) throw new Error(error.message);
+                alert('Payment successful!');
+            } else if (method === 'mpesa') {
+                const phone = document.getElementById('mpesaPhone').value.trim();
+                if (!phone) { alert('Please enter your phone number'); return; }
+                const res = await fetch(`/api/payments/mpesa/stk-push?leaseId=${currentLeaseId}&phoneNumber=${phone}`, {
+                    method: 'POST'
+                });
+                if (!res.ok) {
+                    const err = await res.text();
+                    throw new Error(err);
+                }
+                alert('M‑Pesa push sent to your phone. Please complete the payment.');
+            } else if (method === 'cash') {
+                // Request cash payment – we'll call an endpoint to create a cash payment record
+                const res = await fetch(`/api/payments/create-cash?leaseId=${currentLeaseId}`, {
+                    method: 'POST'
+                });
+                if (!res.ok) {
+                    const err = await res.text();
+                    throw new Error(err);
+                }
+                alert('Cash payment request sent to landlord. You’ll get a receipt once confirmed.');
+            }
+            closePaymentModal();
+            // Refresh tenant data (could reload lease info)
+        } catch (e) {
+            alert('Payment failed: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Pay Now';
+        }
+        async function processPayment() {
+            // ...
+            if (method === 'stripe') {
+                // ... create intent ...
+                const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+                const { error } = await stripe.confirmCardPayment(clientSecret, {
+                    payment_method: { card: stripeCardElement }
+                });
+                // ...
+            }
+        }
+    }
+
+    // ---------- ADMIN ----------
     function renderAdminHome() {
         const users = Array.isArray(allUsers) ? allUsers : [];
         const landlords = users.filter(u => u.role === 'LANDLORD');
         const tenants = users.filter(u => u.role === 'TENANT');
         document.getElementById('adminLandlords').innerText = landlords.length;
         document.getElementById('adminTenants').innerText = tenants.length;
-        document.getElementById('adminProperties').innerText = '0'; // Replace with backend endpoint when ready
+        document.getElementById('adminProperties').innerText = allProperties.length || 0; // placeholder
 
         const tbody = document.getElementById('adminUsersBody');
         if(users.length === 0) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No users registered.</td></tr>`;
         else tbody.innerHTML = users.map(u => `<tr><td>${u.username}</td><td>${u.email}</td><td><span class="badge" style="background:#e2e8f0;">${u.role}</span></td></tr>`).join('');
+
+        // Manager subscription table
+        const managers = Array.isArray(allManagers) ? allManagers : [];
+        const subBody = document.getElementById('managerSubscriptionBody');
+        if(managers.length === 0) {
+            subBody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No managers found.</td></tr>`;
+            return;
+        }
+        subBody.innerHTML = managers.map(m => `
+            <tr>
+                <td>${m.username}</td>
+                <td>${m.subscription}</td>
+                <td>${m.propertyCount}</td>
+                <td>
+                    <select onchange="updateManagerSubscription(${m.id}, this.value)">
+                        <option value="BASIC" ${m.subscription === 'BASIC' ? 'selected' : ''}>Basic</option>
+                        <option value="PRO" ${m.subscription === 'PRO' ? 'selected' : ''}>Pro</option>
+                        <option value="PREMIUM" ${m.subscription === 'PREMIUM' ? 'selected' : ''}>Premium</option>
+                    </select>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function updateManagerSubscription(managerId, tier) {
+        const res = await fetch(`/api/admin/managers/${managerId}/subscription?tier=${tier}`, {
+            method: 'PUT'
+        });
+        if (!res.ok) {
+            alert('Failed to update subscription: ' + await res.text());
+            return;
+        }
+        alert('Subscription updated successfully.');
+        allManagers = await apiCall('/admin/managers');
+        renderAdminHome();
     }
 
     // ---------- PROPERTY USAGE ----------
@@ -461,22 +686,7 @@
         document.getElementById('propertyUsage').innerText = `Properties: ${count} / ${max}`;
     }
 
-    // ---------- POPULATE PROPERTY DROPDOWN ----------
-    function populatePropertyDropdown() {
-        const sel = document.getElementById('propertySelect');
-        const props = Array.isArray(allProperties) ? allProperties : [];
-        sel.innerHTML = '<option value="">— Choose a property —</option>';
-        props.forEach(p => {
-            if (!p.occupied) {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.textContent = p.address + ' (KES ' + p.monthlyRent + ')';
-                sel.appendChild(opt);
-            }
-        });
-    }
-
-    // ---------- WIZARD FUNCTIONS ----------
+    // ---------- WIZARD ----------
     function nextStep(currentStep) {
         if (currentStep === 1) {
             const fullName = document.getElementById('fullName').value.trim();
@@ -514,7 +724,7 @@
         document.getElementById('summary').innerHTML = `
             <p><strong>Name:</strong> ${document.getElementById('fullName').value}</p>
             <p><strong>Phone:</strong> ${document.getElementById('phoneNumber').value}</p>
-            <p><strong>Property:</strong> ${document.getElementById('propertySelect').selectedOptions[0].text}</p>
+            <p><strong>Property:</strong> ${document.getElementById('propertySelect').selectedOptions[0]?.text || 'N/A'}</p>
             <p><strong>Lease:</strong> ${document.getElementById('leaseStart').value} → ${document.getElementById('leaseEnd').value}</p>
         `;
     }
@@ -536,7 +746,7 @@
 
         const tenants = await apiCall('/manager/my-tenants');
         const newTenant = tenants.find(t => t.username === username);
-        if (!newTenant) { alert('Tenant created but could not assign lease. Please assign manually.'); return; }
+        if (!newTenant) { alert('Tenant created but could not assign lease.'); return; }
 
         const leaseResult = await apiCall(`/manager/assign-lease?tenantId=${newTenant.id}&propertyId=${propId}`, 'POST');
         if (leaseResult.error) { alert('Failed to assign lease: ' + leaseResult.error); return; }
@@ -545,15 +755,13 @@
         document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
         document.getElementById('step1').classList.add('active');
         document.getElementById('stepIndicator').innerText = '1';
-
         document.getElementById('fullName').value = '';
         document.getElementById('phoneNumber').value = '';
         document.getElementById('email').value = '';
         document.getElementById('propertySelect').value = '';
         document.getElementById('leaseStart').value = '';
         document.getElementById('leaseEnd').value = '';
-
-        await loadAllData({});
+        await loadAllData(null);
         switchView('view-tenants');
     });
 
@@ -576,6 +784,29 @@
             renderDashboard();
             populatePropertyDropdown();
         }
+    }
+
+    // ---------- POPULATE DROPDOWN ----------
+    function populatePropertyDropdown() {
+        const sel = document.getElementById('propertySelect');
+        const props = Array.isArray(allProperties) ? allProperties : [];
+        sel.innerHTML = '<option value="">— Choose a property —</option>';
+        props.forEach(p => {
+            if (!p.occupied) {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.address + ' (KES ' + p.monthlyRent + ')';
+                sel.appendChild(opt);
+            }
+        });
+    }
+
+    // ---------- MISC ----------
+    function normalizePhone(id) {
+        const inp = document.getElementById(id);
+        let val = inp.value.replace(/\D/g, '');
+        if (val.length > 9) val = val.substring(0, 9);
+        inp.value = val;
     }
 </script>
 </body>

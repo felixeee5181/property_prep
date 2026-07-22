@@ -12,6 +12,7 @@ import com.property_management.property_prep.repository.PropertyRepository;
 import com.property_management.property_prep.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/manager")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('LANDLORD')") // 🔒 Only Managers can use these endpoints
 public class ManagerController {
 
     private final UserRepository userRepository;
@@ -32,6 +34,7 @@ public class ManagerController {
     private final PaymentRepository paymentRepository;
     private final PasswordEncoder passwordEncoder;
 
+    // 1. Create a Tenant
     @PostMapping("/create-tenant")
     public ResponseEntity<String> createTenant(@RequestBody RegisterRequest request) {
         User manager = getLoggedInManager();
@@ -50,21 +53,39 @@ public class ManagerController {
         return ResponseEntity.ok("Tenant created successfully");
     }
 
+    // 2. Create a Property (WITH PROPERTY LIMIT ENFORCEMENT)
     @PostMapping("/create-property")
     public ResponseEntity<String> createProperty(@RequestBody Property property) {
         User manager = getLoggedInManager();
+
+        // 🔒 Check property limit based on subscription
+        int currentCount = propertyRepository.countByManager(manager);
+        int maxAllowed = switch (manager.getSubscription()) {
+            case BASIC -> 5;
+            case PRO -> 20;
+            case PREMIUM -> 100;
+        };
+        if (currentCount >= maxAllowed) {
+            return ResponseEntity.status(403).body(
+                    "Property limit reached (" + currentCount + "/" + maxAllowed + "). " +
+                            "Please ask the Admin to upgrade your subscription."
+            );
+        }
+
         property.setManager(manager);
         property.setOccupied(false);
         propertyRepository.save(property);
         return ResponseEntity.ok("Property created successfully");
     }
 
+    // 3. Get My Properties
     @GetMapping("/my-properties")
     public ResponseEntity<List<Property>> getMyProperties() {
         User manager = getLoggedInManager();
         return ResponseEntity.ok(propertyRepository.findByManager(manager));
     }
 
+    // 4. Get My Tenants
     @GetMapping("/my-tenants")
     public ResponseEntity<List<User>> getMyTenants() {
         User manager = getLoggedInManager();
@@ -77,6 +98,7 @@ public class ManagerController {
         return ResponseEntity.ok(tenants);
     }
 
+    // 5. Assign Lease to a Tenant (Moves them in)
     @PostMapping("/assign-lease")
     public ResponseEntity<String> assignLease(
             @RequestParam("tenantId") Long tenantId,
@@ -113,20 +135,21 @@ public class ManagerController {
 
         return ResponseEntity.ok("Lease assigned successfully! Tenant moved in.");
     }
+
+    // 6. Get My Payments (Income)
     @GetMapping("/my-payments")
     public ResponseEntity<List<Payment>> getMyPayments() {
         User manager = getLoggedInManager();
-        // 1. Get all properties owned by this manager
         List<Property> myProps = propertyRepository.findByManager(manager);
-        // 2. Get all leases for those properties
         List<LeaseAgreement> leases = leaseRepository.findByPropertyIn(myProps);
-        // 3. Extract all payments for those leases
         List<Payment> payments = new ArrayList<>();
         for (LeaseAgreement lease : leases) {
             payments.addAll(paymentRepository.findByLease(lease));
         }
         return ResponseEntity.ok(payments);
     }
+
+    // --- Helper to get the logged-in Manager ---
     private User getLoggedInManager() {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (user.getRole() != RoleType.LANDLORD) {

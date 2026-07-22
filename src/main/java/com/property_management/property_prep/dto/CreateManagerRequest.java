@@ -5,9 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class RegisterRequest {
+public class CreateManagerRequest {
     @NotBlank private String username;
     @NotBlank private String password;
     @Email @NotBlank private String email;
-  //  private String role; // optional – default to TENANT
 }

@@ -1,13 +1,13 @@
 package com.property_management.property_prep.controller;
 
-import com.property_management.property_prep.entity.Property;
+import com.property_management.property_prep.dto.CreateManagerRequest;
+import com.property_management.property_prep.dto.ManagerSummaryDTO;
+import com.property_management.property_prep.dto.UserProfileDTO;
 import com.property_management.property_prep.entity.User;
-import com.property_management.property_prep.enums.RoleType;
-import com.property_management.property_prep.repository.PropertyRepository;
-import com.property_management.property_prep.repository.UserRepository;
+import com.property_management.property_prep.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,58 +15,37 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')") // 🔒 Only Admins can use these endpoints
 public class AdminController {
 
-    private final UserRepository userRepository;
-    private final PropertyRepository propertyRepository;
+    private final AdminService adminService;
 
-    // --- Existing GET endpoints ---
+    // 1. Create a new Manager (Landlord)
+    @PostMapping("/managers")
+    public ResponseEntity<String> createManager(@RequestBody CreateManagerRequest request) {
+        adminService.createManager(request);
+        return ResponseEntity.ok("Manager created successfully.");
+    }
+
+    // 2. Get list of all Managers with their property counts
     @GetMapping("/managers")
-    public ResponseEntity<List<User>> getAllManagers() {
-        checkAdmin();
-        return ResponseEntity.ok(userRepository.findByRole(RoleType.LANDLORD));
+    public ResponseEntity<List<ManagerSummaryDTO>> getAllManagers() {
+        return ResponseEntity.ok(adminService.getAllManagers());
     }
 
-    @GetMapping("/vacant-properties")
-    public ResponseEntity<List<Property>> getVacantProperties() {
-        checkAdmin();
-        return ResponseEntity.ok(propertyRepository.findByIsOccupiedFalse());
+    // 3. Get ALL users (for Admin dashboard)
+    @GetMapping("/all-users")
+    public ResponseEntity<List<UserProfileDTO>> getAllUsers() {
+        return ResponseEntity.ok(adminService.getAllUsers());
     }
 
-    // --- NEW: Update a manager's subscription tier ---
+    // 4. Update a manager's subscription tier (Gives admin consent to property limits)
     @PutMapping("/managers/{managerId}/subscription")
     public ResponseEntity<String> updateSubscription(
             @PathVariable Long managerId,
             @RequestParam User.SubscriptionTier tier
     ) {
-        User admin = getLoggedInAdmin(); // ensure only admin can do this
-
-        User manager = userRepository.findById(managerId)
-                .orElseThrow(() -> new RuntimeException("Manager not found"));
-
-        // Ensure the target user is actually a LANDLORD
-        if (manager.getRole() != RoleType.LANDLORD) {
-            return ResponseEntity.badRequest().body("User is not a manager (LANDLORD)");
-        }
-
-        manager.setSubscription(tier);
-        userRepository.save(manager);
+        adminService.updateManagerSubscription(managerId, tier);
         return ResponseEntity.ok("Subscription updated to " + tier);
-    }
-
-    // --- Helper methods ---
-    private void checkAdmin() {
-        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (user.getRole() != RoleType.ADMIN) {
-            throw new RuntimeException("Access Denied: Admins only");
-        }
-    }
-
-    private User getLoggedInAdmin() {
-        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (user.getRole() != RoleType.ADMIN) {
-            throw new RuntimeException("Access Denied: Admins only");
-        }
-        return user;
     }
 }

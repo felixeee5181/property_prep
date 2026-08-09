@@ -125,11 +125,17 @@
 
     <div class="main-content">
         <div class="top-header"><h2 id="headerTitle">Dashboard</h2></div>
+        
+        <!-- ============================================================ -->
+        <!-- 🔴 FIXED: Admin Create Manager Section (Added Password Field) -->
+        <!-- ============================================================ -->
         <div class="card" style="margin-bottom:20px;">
             <h3>➕ Add New Manager (Landlord)</h3>
             <div class="form-group" style="display:flex; gap:10px; flex-wrap:wrap;">
                 <input type="text" id="newManagerUsername" placeholder="Username" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                 <input type="email" id="newManagerEmail" placeholder="Email" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                <!-- ✅ ADDED: Password field -->
+                <input type="text" id="newManagerPassword" placeholder="Temp Password" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                 <button class="btn-primary" onclick="createManager()" style="padding:8px 20px;">Create Manager</button>
             </div>
         </div>
@@ -250,93 +256,127 @@
 </div>
 
 <!-- ============ JAVASCRIPT ============ -->
-<script>let STRIPE_PUBLISHABLE_KEY = '';
+<script>
+let STRIPE_PUBLISHABLE_KEY = '';
 
-// Fetch the publishable key from backend before doing anything Stripe-related
+// ============================================================
+// LOAD STRIPE KEY
+// ============================================================
 async function loadStripeKey() {
     try {
         const res = await fetch('/api/config/stripe-publishable-key');
         if (!res.ok) throw new Error('Failed to fetch Stripe key');
         STRIPE_PUBLISHABLE_KEY = await res.text();
-        console.log('Stripe publishable key loaded');
+        console.log('✅ Stripe publishable key loaded');
+        if (typeof Stripe !== 'undefined' && document.getElementById('card-element')) {
+            initializeStripe();
+        }
     } catch (err) {
-        console.error('Could not load Stripe key:', err);
-        // fallback to a hardcoded key (optional) or show error
-        STRIPE_PUBLISHABLE_KEY = 'pk_test_...'; // optional fallback
+        console.error('❌ Could not load Stripe key:', err);
+        STRIPE_PUBLISHABLE_KEY = 'pk_test_...'; // Fallback
+    }
+}
+
+function initializeStripe() {
+    if (!STRIPE_PUBLISHABLE_KEY || STRIPE_PUBLISHABLE_KEY === 'pk_test_...') {
+        console.warn('Stripe key not ready yet. Retrying...');
+        setTimeout(initializeStripe, 1000);
+        return;
+    }
+    if (document.getElementById('card-element') && !stripeCardElement) {
+        const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+        const elements = stripe.elements();
+        stripeCardElement = elements.create('card');
+        stripeCardElement.mount('#card-element');
     }
 }
 
 // Call it immediately
 loadStripeKey();
-    const API = '/api';  // Relative to current domai
 
-    let donutChartInstance = null;
-    let currentUserRole = null;
-    let allProperties = [], allPayments = [], allTenants = [], allUsers = [], allManagers = [];
-    let stripeCardElement = null;
-    let currentLeaseId = null;
-    let currentRentAmount = 0;
+// ============================================================
+// GLOBAL VARIABLES
+// ============================================================
+const API = '/api';
+let donutChartInstance = null;
+let currentUserRole = null;
+let allProperties = [], allPayments = [], allTenants = [], allUsers = [], allManagers = [];
+let stripeCardElement = null;
+let currentLeaseId = null;
+let currentRentAmount = 0;
 
-    // ---------- AUTO-LOGIN ----------
-    document.addEventListener('DOMContentLoaded', async function() {
-        const token = localStorage.getItem('jwtToken');
-        if (token) {
-            const user = await apiCall('/auth/me');
-            if (!user.error && user.role) {
-                await initApp(user);
-                return;
-            } else {
-                localStorage.removeItem('jwtToken');
-            }
-        }
-        document.getElementById('loginSection').classList.remove('hidden');
-    });
-
-    // ---------- INIT APP ----------
-    async function initApp(user) {
-        document.getElementById('loginSection').classList.add('hidden');
-        document.getElementById('app').classList.remove('hidden');
-        currentUserRole = user.role;
-        document.getElementById('userName').innerText = user.username || 'User';
-        document.getElementById('userEmail').innerText = user.email || 'N/A';
-        document.getElementById('userRoleBadge').innerText = currentUserRole;
-
-        renderSidebar(currentUserRole);
-        await loadAllData(user);
-
-        if(currentUserRole === 'LANDLORD') switchView('view-landlord-dashboard');
-        else if(currentUserRole === 'TENANT') switchView('view-tenant-home');
-        else if(currentUserRole === 'ADMIN') switchView('view-admin-home');
-        updatePropertyUsage(user);
-    }
-
-    // ---------- LOGIN ----------
-    async function login() {
-        const user = document.getElementById('loginUser').value;
-        const pass = document.getElementById('loginPass').value;
-        try {
-            const res = await fetch(`${API}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: user, password: pass })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Login failed');
-            localStorage.setItem('jwtToken', data.token);
-            const userData = await apiCall('/auth/me');
-            if(userData.error) throw new Error(userData.error);
-            await initApp(userData);
-        } catch(e) {
-            alert('Login failed: ' + e.message);
+// ============================================================
+// AUTO-LOGIN
+// ============================================================
+document.addEventListener('DOMContentLoaded', async function() {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+        const user = await apiCall('/auth/me');
+        if (!user.error && user.role) {
+            await initApp(user);
+            return;
+        } else {
+            localStorage.removeItem('jwtToken');
         }
     }
+    document.getElementById('loginSection').classList.remove('hidden');
+});
 
-    // ---------- API CALL ----------
-    async function apiCall(url, method='GET', body=null) {
-        const token = localStorage.getItem('jwtToken');
+// ============================================================
+// INIT APP
+// ============================================================
+async function initApp(user) {
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    currentUserRole = user.role;
+    document.getElementById('userName').innerText = user.username || 'User';
+    document.getElementById('userEmail').innerText = user.email || 'N/A';
+    document.getElementById('userRoleBadge').innerText = currentUserRole;
+
+    renderSidebar(currentUserRole);
+    await loadAllData(user);
+
+    if(currentUserRole === 'LANDLORD') switchView('view-landlord-dashboard');
+    else if(currentUserRole === 'TENANT') switchView('view-tenant-home');
+    else if(currentUserRole === 'ADMIN') switchView('view-admin-home');
+    updatePropertyUsage(user);
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+async function login() {
+    const user = document.getElementById('loginUser').value;
+    const pass = document.getElementById('loginPass').value;
+    try {
+        const res = await fetch(`${API}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Login failed');
+        localStorage.setItem('jwtToken', data.token);
+        const userData = await apiCall('/auth/me');
+        if(userData.error) throw new Error(userData.error);
+        await initApp(userData);
+    } catch(e) {
+        alert('Login failed: ' + e.message);
+    }
+}
+
+// ============================================================
+// API CALL (Fixed error handling)
+// ============================================================
+async function apiCall(url, method='GET', body=null) {
+    const token = localStorage.getItem('jwtToken');
+    try {
         const res = await fetch(API + url, {
             method,
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
+            },
             body: body ? JSON.stringify(body) : null
         });
         if (!res.ok) {
@@ -344,478 +384,561 @@ loadStripeKey();
             return { error: `Status ${res.status}: ${errorText}` };
         }
         return res.json();
+    } catch (e) {
+        return { error: e.message };
     }
+}
 
-    // ---------- SIDEBAR ----------
-    function renderSidebar(role) {
-        const nav = document.getElementById('sidebarNav');
-        const dropdown = document.getElementById('sidebarDropdown');
-        nav.innerHTML = '';
-        dropdown.innerHTML = '';
+// ============================================================
+// SIDEBAR
+// ============================================================
+function renderSidebar(role) {
+    const nav = document.getElementById('sidebarNav');
+    const dropdown = document.getElementById('sidebarDropdown');
+    nav.innerHTML = '';
+    dropdown.innerHTML = '';
 
-        if (role === 'LANDLORD') {
-            const links = [
-                { id: 'view-landlord-dashboard', icon: '📊', label: 'Dashboard' },
-                { id: 'view-properties', icon: '🏢', label: 'Properties' },
-                { id: 'view-tenants', icon: '👥', label: 'Tenants' }
-            ];
-            links.forEach(l => {
-                const a = document.createElement('div');
-                a.className = 'nav-link';
-                a.innerHTML = `<i>${l.icon}</i> ${l.label}`;
-                a.onclick = () => switchView(l.id);
-                nav.appendChild(a);
-            });
-            const dropItems = [
-                { id: 'view-add-tenant', label: '➕ Add Tenant' },
-                { id: 'view-add-property', label: '➕ Add Property' }
-            ];
-            dropItems.forEach(l => {
-                const d = document.createElement('div');
-                d.className = 'sidebar-dropdown-item';
-                d.innerText = l.label;
-                d.onclick = () => { switchView(l.id); document.getElementById('sidebarDropdown').classList.remove('open'); };
-                dropdown.appendChild(d);
-            });
-        } else if (role === 'TENANT') {
-            const links = [{ id: 'view-tenant-home', icon: '🏠', label: 'My Lease' }];
-            links.forEach(l => {
-                const a = document.createElement('div');
-                a.className = 'nav-link';
-                a.innerHTML = `<i>${l.icon}</i> ${l.label}`;
-                a.onclick = () => switchView(l.id);
-                nav.appendChild(a);
-            });
-        } else if (role === 'ADMIN') {
-            const links = [{ id: 'view-admin-home', icon: '👑', label: 'System Overview' }];
-            links.forEach(l => {
-                const a = document.createElement('div');
-                a.className = 'nav-link';
-                a.innerHTML = `<i>${l.icon}</i> ${l.label}`;
-                a.onclick = () => switchView(l.id);
-                nav.appendChild(a);
-            });
-        }
-        const firstLink = nav.querySelector('.nav-link');
-        if(firstLink) firstLink.classList.add('active');
+    if (role === 'LANDLORD') {
+        const links = [
+            { id: 'view-landlord-dashboard', icon: '📊', label: 'Dashboard' },
+            { id: 'view-properties', icon: '🏢', label: 'Properties' },
+            { id: 'view-tenants', icon: '👥', label: 'Tenants' }
+        ];
+        links.forEach(l => {
+            const a = document.createElement('div');
+            a.className = 'nav-link';
+            a.innerHTML = `<i>${l.icon}</i> ${l.label}`;
+            a.onclick = () => switchView(l.id);
+            nav.appendChild(a);
+        });
+        const dropItems = [
+            { id: 'view-add-tenant', label: '➕ Add Tenant' },
+            { id: 'view-add-property', label: '➕ Add Property' }
+        ];
+        dropItems.forEach(l => {
+            const d = document.createElement('div');
+            d.className = 'sidebar-dropdown-item';
+            d.innerText = l.label;
+            d.onclick = () => { switchView(l.id); document.getElementById('sidebarDropdown').classList.remove('open'); };
+            dropdown.appendChild(d);
+        });
+    } else if (role === 'TENANT') {
+        const links = [{ id: 'view-tenant-home', icon: '🏠', label: 'My Lease' }];
+        links.forEach(l => {
+            const a = document.createElement('div');
+            a.className = 'nav-link';
+            a.innerHTML = `<i>${l.icon}</i> ${l.label}`;
+            a.onclick = () => switchView(l.id);
+            nav.appendChild(a);
+        });
+    } else if (role === 'ADMIN') {
+        const links = [{ id: 'view-admin-home', icon: '👑', label: 'System Overview' }];
+        links.forEach(l => {
+            const a = document.createElement('div');
+            a.className = 'nav-link';
+            a.innerHTML = `<i>${l.icon}</i> ${l.label}`;
+            a.onclick = () => switchView(l.id);
+            nav.appendChild(a);
+        });
     }
+    const firstLink = nav.querySelector('.nav-link');
+    if(firstLink) firstLink.classList.add('active');
+}
 
-    function toggleSidebarMenu() { document.getElementById('sidebarDropdown').classList.toggle('open'); }
+function toggleSidebarMenu() { 
+    document.getElementById('sidebarDropdown').classList.toggle('open'); 
+}
 
-    function switchView(viewId) {
-        document.getElementById('sidebarDropdown').classList.remove('open');
-        document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
-        let target = document.getElementById(viewId);
-        if (target) {
-            target.classList.add('active');
-            document.getElementById('headerTitle').innerText = target.querySelector('h3')?.innerText || viewId.replace(/-/g, ' ');
-        }
-        // Refresh data
-        if (viewId === 'view-tenants') renderTenantsTable();
-        if (viewId === 'view-properties') renderPropertiesTable();
-        if (viewId === 'view-landlord-dashboard') renderDashboard();
+function switchView(viewId) {
+    document.getElementById('sidebarDropdown').classList.remove('open');
+    document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+    let target = document.getElementById(viewId);
+    if (target) {
+        target.classList.add('active');
+        document.getElementById('headerTitle').innerText = target.querySelector('h3')?.innerText || viewId.replace(/-/g, ' ');
     }
+    if (viewId === 'view-tenants') renderTenantsTable();
+    if (viewId === 'view-properties') renderPropertiesTable();
+    if (viewId === 'view-landlord-dashboard') renderDashboard();
+}
 
-    // ---------- LOAD DATA ----------
-    async function loadAllData(user) {
-        if (currentUserRole === 'LANDLORD') {
-            allProperties = await apiCall('/manager/my-properties');
-            allPayments = await apiCall('/manager/my-payments');
-            allTenants = await apiCall('/manager/my-tenants');
-            renderDashboard();
-            renderPropertiesTable();
-            renderTenantsTable();
-            renderCashPayments();
-            populatePropertyDropdown();
-        } else if (currentUserRole === 'TENANT') {
-            const lease = await apiCall('/tenant/my-lease');
-            if(!lease.error) renderTenantHome(lease);
-        } else if (currentUserRole === 'ADMIN') {
-            allUsers = await apiCall('/admin/all-users');
-            allManagers = await apiCall('/admin/managers');
-            renderAdminHome();
-        }
-    }
-
-    // ---------- LANDLORD DASHBOARD ----------
-    function renderDashboard() {
-        let props = Array.isArray(allProperties) ? allProperties : [];
-        const total = props.length;
-        const occupied = props.filter(p => p.occupied).length;
-        const vacant = total - occupied;
-        const rate = total > 0 ? Math.round((occupied / total) * 100) : 0;
-        document.getElementById('occupiedCount').innerText = occupied;
-        document.getElementById('vacantCount').innerText = vacant;
-        document.getElementById('occupancyRate').innerText = rate + '%';
-
-        const ctx = document.getElementById('occupancyDonut').getContext('2d');
-        if (donutChartInstance) donutChartInstance.destroy();
-        donutChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: ['Occupied', 'Vacant'], datasets: [{ data: [occupied, vacant], backgroundColor: ['#3b82f6', '#e2e8f0'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' } });
-
-        let payments = Array.isArray(allPayments) ? allPayments : [];
-        const tbody = document.getElementById('paymentsTableBody');
-        if(payments.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No recent payments found.</td></tr>`;
-        else tbody.innerHTML = payments.map(p => `<tr><td>${p.lease?.tenant?.username || "Tenant"}</td><td>${p.lease?.property?.address || "Unit"}</td><td>KES ${p.amount?.toLocaleString() || 0}</td><td><span class="badge ${p.status === 'PAID' ? 'badge-paid' : p.status === 'OVERDUE' ? 'badge-overdue' : 'badge-pending'}">${p.status || 'PENDING'}</span></td></tr>`).join('');
-    }
-
-    // ---------- CASH PAYMENTS ----------
-    async function renderCashPayments() {
-        // Fetch pending cash payments from the backend
-        const response = await apiCall('/payments/cash-pending');
-        const cashPayments = response.error ? [] : response;
-        const tbody = document.getElementById('cashPaymentsBody');
-        if(cashPayments.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No cash payments pending</td></tr>`;
-            return;
-        }
-        tbody.innerHTML = cashPayments.map(p => `
-            <tr>
-                <td>${p.lease?.tenant?.username || 'Unknown'}</td>
-                <td>KES ${p.amount?.toLocaleString() || 0}</td>
-                <td>${p.dueDate ? new Date(p.dueDate).toLocaleDateString() : 'N/A'}</td>
-                <td><button class="btn-primary" onclick="markCashPaid(${p.id})">Mark as Paid</button></td>
-            </tr>
-        `).join('');
-    }
-
-    async function markCashPaid(paymentId) {
-        if (!confirm('Confirm that you have received the cash payment?')) return;
-        const res = await fetch(`/api/payments/cash/${paymentId}`, { method: 'POST' });
-        if (!res.ok) {
-            alert('Failed: ' + await res.text());
-            return;
-        }
-        alert('Payment marked as paid! Receipt sent to tenant and you.');
-        await loadAllData(null);
+// ============================================================
+// LOAD DATA
+// ============================================================
+async function loadAllData(user) {
+    if (currentUserRole === 'LANDLORD') {
+        allProperties = await apiCall('/manager/my-properties');
+        allPayments = await apiCall('/manager/my-payments');
+        allTenants = await apiCall('/manager/my-tenants');
+        renderDashboard();
+        renderPropertiesTable();
+        renderTenantsTable();
         renderCashPayments();
+        populatePropertyDropdown();
+    } else if (currentUserRole === 'TENANT') {
+        const lease = await apiCall('/tenant/my-lease');
+        if(!lease.error) renderTenantHome(lease);
+    } else if (currentUserRole === 'ADMIN') {
+        allUsers = await apiCall('/admin/all-users');
+        allManagers = await apiCall('/admin/managers');
+        renderAdminHome();
     }
+}
 
-    // ---------- LANDLORD TABLES ----------
-    function renderPropertiesTable() {
-        const props = Array.isArray(allProperties) ? allProperties : [];
-        const tbody = document.getElementById('propertiesListBody');
-        if(props.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No properties added yet.</td></tr>`;
-        else tbody.innerHTML = props.map(p => `<tr><td>${p.address}</td><td>${p.city}</td><td>KES ${p.monthlyRent}</td><td>${p.occupied ? '🟢 Occupied' : '🔴 Vacant'}</td></tr>`).join('');
+// ============================================================
+// LANDLORD DASHBOARD
+// ============================================================
+function renderDashboard() {
+    let props = Array.isArray(allProperties) ? allProperties : [];
+    const total = props.length;
+    const occupied = props.filter(p => p.occupied).length;
+    const vacant = total - occupied;
+    const rate = total > 0 ? Math.round((occupied / total) * 100) : 0;
+    document.getElementById('occupiedCount').innerText = occupied;
+    document.getElementById('vacantCount').innerText = vacant;
+    document.getElementById('occupancyRate').innerText = rate + '%';
+
+    const ctx = document.getElementById('occupancyDonut').getContext('2d');
+    if (donutChartInstance) donutChartInstance.destroy();
+    donutChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: ['Occupied', 'Vacant'], datasets: [{ data: [occupied, vacant], backgroundColor: ['#3b82f6', '#e2e8f0'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' } });
+
+    let payments = Array.isArray(allPayments) ? allPayments : [];
+    const tbody = document.getElementById('paymentsTableBody');
+    if(payments.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No recent payments found.</td></tr>`;
+    else tbody.innerHTML = payments.map(p => `<tr><td>${p.lease?.tenant?.username || "Tenant"}</td><td>${p.lease?.property?.address || "Unit"}</td><td>KES ${p.amount?.toLocaleString() || 0}</td><td><span class="badge ${p.status === 'PAID' ? 'badge-paid' : p.status === 'OVERDUE' ? 'badge-overdue' : 'badge-pending'}">${p.status || 'PENDING'}</span></td></tr>`).join('');
+}
+
+// ============================================================
+// CASH PAYMENTS
+// ============================================================
+async function renderCashPayments() {
+    const response = await apiCall('/payments/cash-pending');
+    const cashPayments = response.error ? [] : response;
+    const tbody = document.getElementById('cashPaymentsBody');
+    if(cashPayments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No cash payments pending</td></tr>`;
+        return;
     }
+    tbody.innerHTML = cashPayments.map(p => `
+        <tr>
+            <td>${p.lease?.tenant?.username || 'Unknown'}</td>
+            <td>KES ${p.amount?.toLocaleString() || 0}</td>
+            <td>${p.dueDate ? new Date(p.dueDate).toLocaleDateString() : 'N/A'}</td>
+            <td><button class="btn-primary" onclick="markCashPaid(${p.id})">Mark as Paid</button></td>
+        </tr>
+    `).join('');
+}
 
-    function renderTenantsTable() {
-        const tenants = Array.isArray(allTenants) ? allTenants : [];
-        const tbody = document.getElementById('tenantsListBody');
-        if(tenants.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No tenants added yet.</td></tr>`;
-        else tbody.innerHTML = tenants.map(t => `<tr><td>${t.username}</td><td>${t.email}</td><td>${t.phone || 'N/A'}</td><td>${t.currentProperty?.address || 'Not assigned'}</td></tr>`).join('');
+async function markCashPaid(paymentId) {
+    if (!confirm('Confirm that you have received the cash payment?')) return;
+    const res = await fetch(`/api/payments/cash/${paymentId}`, { method: 'POST' });
+    if (!res.ok) {
+        alert('Failed: ' + await res.text());
+        return;
     }
+    alert('Payment marked as paid! Receipt sent to tenant and you.');
+    await loadAllData(null);
+    renderCashPayments();
+}
 
-    // ---------- TENANT HOME ----------
-    function renderTenantHome(lease) {
-        currentLeaseId = lease.id;
-        currentRentAmount = lease.monthlyRent || 0;
-        document.getElementById('tenantRentAmount').innerText = `KES ${currentRentAmount.toLocaleString()}`;
-        document.getElementById('tenantProperty').innerText = lease.property?.address || 'Not assigned';
-        document.getElementById('tenantPropertyCity').innerText = lease.property?.city || 'N/A';
-        const tbody = document.getElementById('tenantPaymentsBody');
-        // You could fetch tenant payments from an endpoint; for demo we show a placeholder
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No payment history available.</td></tr>`;
+// ============================================================
+// LANDLORD TABLES
+// ============================================================
+function renderPropertiesTable() {
+    const props = Array.isArray(allProperties) ? allProperties : [];
+    const tbody = document.getElementById('propertiesListBody');
+    if(props.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No properties added yet.</td></tr>`;
+    else tbody.innerHTML = props.map(p => `<tr><td>${p.address}</td><td>${p.city}</td><td>KES ${p.monthlyRent}</td><td>${p.occupied ? '🟢 Occupied' : '🔴 Vacant'}</td></tr>`).join('');
+}
+
+function renderTenantsTable() {
+    const tenants = Array.isArray(allTenants) ? allTenants : [];
+    const tbody = document.getElementById('tenantsListBody');
+    if(tenants.length === 0) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No tenants added yet.</td></tr>`;
+    else tbody.innerHTML = tenants.map(t => `<tr><td>${t.username}</td><td>${t.email}</td><td>${t.phone || 'N/A'}</td><td>${t.currentProperty?.address || 'Not assigned'}</td></tr>`).join('');
+}
+
+// ============================================================
+// TENANT HOME
+// ============================================================
+function renderTenantHome(lease) {
+    currentLeaseId = lease.id;
+    currentRentAmount = lease.monthlyRent || 0;
+    document.getElementById('tenantRentAmount').innerText = `KES ${currentRentAmount.toLocaleString()}`;
+    document.getElementById('tenantProperty').innerText = lease.property?.address || 'Not assigned';
+    document.getElementById('tenantPropertyCity').innerText = lease.property?.city || 'N/A';
+    const tbody = document.getElementById('tenantPaymentsBody');
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No payment history available.</td></tr>`;
+}
+
+// ============================================================
+// PAYMENT MODAL
+// ============================================================
+function openPaymentModal() {
+    if (!currentLeaseId) {
+        alert('No active lease found. Please contact your landlord.');
+        return;
     }
+    document.getElementById('modalRentAmount').innerText = `KES ${currentRentAmount.toLocaleString()}`;
+    document.getElementById('paymentModal').style.display = 'flex';
+    document.querySelectorAll('input[name="paymentMethod"]').forEach(r => r.checked = false);
+    document.querySelector('input[name="paymentMethod"][value="stripe"]').checked = true;
+    togglePaymentFields();
+    // Stripe already initialized in loadStripeKey()
+}
 
-    // ---------- PAYMENT MODAL ----------
-    function openPaymentModal() {
-        if (!currentLeaseId) {
-            alert('No active lease found. Please contact your landlord.');
-            return;
-        }
-        document.getElementById('modalRentAmount').innerText = `KES ${currentRentAmount.toLocaleString()}`;
-        document.getElementById('paymentModal').style.display = 'flex';
-        // Reset fields
-        document.querySelectorAll('input[name="paymentMethod"]').forEach(r => r.checked = false);
-        document.querySelector('input[name="paymentMethod"][value="stripe"]').checked = true;
-        togglePaymentFields();
-        // Mount Stripe element if not already
-        if (!stripeCardElement) {
+function closePaymentModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+}
+
+function togglePaymentFields() {
+    const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+    document.getElementById('stripeFields').classList.toggle('hidden', method !== 'stripe');
+    document.getElementById('mpesaFields').classList.toggle('hidden', method !== 'mpesa');
+    document.getElementById('cashFields').classList.toggle('hidden', method !== 'cash');
+}
+
+document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+    radio.addEventListener('change', togglePaymentFields);
+});
+
+async function processPayment() {
+    const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+    const btn = document.getElementById('payButton');
+    btn.disabled = true;
+    btn.innerText = 'Processing...';
+
+    try {
+        if (method === 'stripe') {
+            const response = await fetch(`/api/payments/create-intent?leaseId=${currentLeaseId}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Failed to create intent');
+            const { clientSecret } = data;
             const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-            const elements = stripe.elements();
-            stripeCardElement = elements.create('card');
-            stripeCardElement.mount('#card-element');
-        }
-        function openPaymentModal() {
-            // ... existing checks ...
-            document.getElementById('paymentModal').style.display = 'flex';
-            // ...
-            // Mount Stripe element if not already
-            if (!stripeCardElement) {
-                if (!STRIPE_PUBLISHABLE_KEY) {
-                    alert('Stripe configuration not loaded. Please refresh.');
-                    return;
-                }
-                const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-                const elements = stripe.elements();
-                stripeCardElement = elements.create('card');
-                stripeCardElement.mount('#card-element');
+            const { error } = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: { card: stripeCardElement }
+            });
+            if (error) throw new Error(error.message);
+            alert('Payment successful!');
+        } else if (method === 'mpesa') {
+            const phone = document.getElementById('mpesaPhone').value.trim();
+            if (!phone) { alert('Please enter your phone number'); return; }
+            const res = await fetch(`/api/payments/mpesa/stk-push?leaseId=${currentLeaseId}&phoneNumber=${phone}`, {
+                method: 'POST'
+            });
+            if (!res.ok) {
+                const err = await res.text();
+                throw new Error(err);
             }
-        }
-    }
-
-    function closePaymentModal() {
-        document.getElementById('paymentModal').style.display = 'none';
-    }
-
-    function togglePaymentFields() {
-        const method = document.querySelector('input[name="paymentMethod"]:checked').value;
-        document.getElementById('stripeFields').classList.toggle('hidden', method !== 'stripe');
-        document.getElementById('mpesaFields').classList.toggle('hidden', method !== 'mpesa');
-        document.getElementById('cashFields').classList.toggle('hidden', method !== 'cash');
-    }
-
-    document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
-        radio.addEventListener('change', togglePaymentFields);
-    });
-
-    async function processPayment() {
-        const method = document.querySelector('input[name="paymentMethod"]:checked').value;
-        const btn = document.getElementById('payButton');
-        btn.disabled = true;
-        btn.innerText = 'Processing...';
-
-        try {
-            if (method === 'stripe') {
-                // Create payment intent
-                const response = await fetch(`/api/payments/create-intent?leaseId=${currentLeaseId}`);
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.message || 'Failed to create intent');
-                const { clientSecret } = data;
-                const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-                const { error } = await stripe.confirmCardPayment(clientSecret, {
-                    payment_method: { card: stripeCardElement }
-                });
-                if (error) throw new Error(error.message);
-                alert('Payment successful!');
-            } else if (method === 'mpesa') {
-                const phone = document.getElementById('mpesaPhone').value.trim();
-                if (!phone) { alert('Please enter your phone number'); return; }
-                const res = await fetch(`/api/payments/mpesa/stk-push?leaseId=${currentLeaseId}&phoneNumber=${phone}`, {
-                    method: 'POST'
-                });
-                if (!res.ok) {
-                    const err = await res.text();
-                    throw new Error(err);
-                }
-                alert('M‑Pesa push sent to your phone. Please complete the payment.');
-            } else if (method === 'cash') {
-                // Request cash payment – we'll call an endpoint to create a cash payment record
-                const res = await fetch(`/api/payments/create-cash?leaseId=${currentLeaseId}`, {
-                    method: 'POST'
-                });
-                if (!res.ok) {
-                    const err = await res.text();
-                    throw new Error(err);
-                }
-                alert('Cash payment request sent to landlord. You’ll get a receipt once confirmed.');
+            alert('M‑Pesa push sent to your phone. Please complete the payment.');
+        } else if (method === 'cash') {
+            const res = await fetch(`/api/payments/create-cash?leaseId=${currentLeaseId}`, {
+                method: 'POST'
+            });
+            if (!res.ok) {
+                const err = await res.text();
+                throw new Error(err);
             }
-            closePaymentModal();
-            // Refresh tenant data (could reload lease info)
-        } catch (e) {
-            alert('Payment failed: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = 'Pay Now';
+            alert('Cash payment request sent to landlord. You’ll get a receipt once confirmed.');
         }
-        async function processPayment() {
-            // ...
-            if (method === 'stripe') {
-                // ... create intent ...
-                const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-                const { error } = await stripe.confirmCardPayment(clientSecret, {
-                    payment_method: { card: stripeCardElement }
-                });
-                // ...
-            }
-        }
+        closePaymentModal();
+    } catch (e) {
+        alert('Payment failed: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Pay Now';
     }
+}
 
-    // ---------- ADMIN ----------
-    function renderAdminHome() {
-        const users = Array.isArray(allUsers) ? allUsers : [];
-        const landlords = users.filter(u => u.role === 'LANDLORD');
-        const tenants = users.filter(u => u.role === 'TENANT');
-        document.getElementById('adminLandlords').innerText = landlords.length;
-        document.getElementById('adminTenants').innerText = tenants.length;
-        document.getElementById('adminProperties').innerText = allProperties.length || 0; // placeholder
+// ============================================================
+// ADMIN FUNCTIONS
+// ============================================================
+function renderAdminHome() {
+    const users = Array.isArray(allUsers) ? allUsers : [];
+    const landlords = users.filter(u => u.role === 'LANDLORD');
+    const tenants = users.filter(u => u.role === 'TENANT');
+    document.getElementById('adminLandlords').innerText = landlords.length;
+    document.getElementById('adminTenants').innerText = tenants.length;
+    document.getElementById('adminProperties').innerText = allProperties.length || 0;
 
-        const tbody = document.getElementById('adminUsersBody');
-        if(users.length === 0) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No users registered.</td></tr>`;
-        else tbody.innerHTML = users.map(u => `<tr><td>${u.username}</td><td>${u.email}</td><td><span class="badge" style="background:#e2e8f0;">${u.role}</span></td></tr>`).join('');
+    const tbody = document.getElementById('adminUsersBody');
+    if(users.length === 0) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No users registered.</td></tr>`;
+    else tbody.innerHTML = users.map(u => `<tr><td>${u.username}</td><td>${u.email}</td><td><span class="badge" style="background:#e2e8f0;">${u.role}</span></td></tr>`).join('');
 
-        // Manager subscription table
-        const managers = Array.isArray(allManagers) ? allManagers : [];
-        const subBody = document.getElementById('managerSubscriptionBody');
-        if(managers.length === 0) {
-            subBody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No managers found.</td></tr>`;
-            return;
-        }
-        subBody.innerHTML = managers.map(m => `
-            <tr>
-                <td>${m.username}</td>
-                <td>${m.subscription}</td>
-                <td>${m.propertyCount}</td>
-                <td>
-                    <select onchange="updateManagerSubscription(${m.id}, this.value)">
-                        <option value="BASIC" ${m.subscription === 'BASIC' ? 'selected' : ''}>Basic</option>
-                        <option value="PRO" ${m.subscription === 'PRO' ? 'selected' : ''}>Pro</option>
-                        <option value="PREMIUM" ${m.subscription === 'PREMIUM' ? 'selected' : ''}>Premium</option>
-                    </select>
-                </td>
-            </tr>
-        `).join('');
+    const managers = Array.isArray(allManagers) ? allManagers : [];
+    const subBody = document.getElementById('managerSubscriptionBody');
+    if(managers.length === 0) {
+        subBody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No managers found.</td></tr>`;
+        return;
     }
+    subBody.innerHTML = managers.map(m => `
+        <tr>
+            <td>${m.username}</td>
+            <td>${m.subscription}</td>
+            <td>${m.propertyCount}</td>
+            <td>
+                <select onchange="updateManagerSubscription(${m.id}, this.value)">
+                    <option value="BASIC" ${m.subscription === 'BASIC' ? 'selected' : ''}>Basic</option>
+                    <option value="PRO" ${m.subscription === 'PRO' ? 'selected' : ''}>Pro</option>
+                    <option value="PREMIUM" ${m.subscription === 'PREMIUM' ? 'selected' : ''}>Premium</option>
+                </select>
+            </td>
+        </tr>
+    `).join('');
+}
 
-    async function updateManagerSubscription(managerId, tier) {
+// ============================================================
+// 🔴 FIXED: updateManagerSubscription with Authorization header
+// ============================================================
+async function updateManagerSubscription(managerId, tier) {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) {
+        alert('❌ You must be logged in.');
+        return;
+    }
+    try {
         const res = await fetch(`/api/admin/managers/${managerId}/subscription?tier=${tier}`, {
-            method: 'PUT'
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}` // ✅ ADDED
+            }
         });
         if (!res.ok) {
             alert('Failed to update subscription: ' + await res.text());
             return;
         }
-        alert('Subscription updated successfully.');
+        alert('✅ Subscription updated successfully.');
         allManagers = await apiCall('/admin/managers');
         renderAdminHome();
+    } catch (e) {
+        alert('❌ Error: ' + e.message);
+    }
+}
+
+// ============================================================
+// 🔴 FIXED: createManager function with full validation
+// ============================================================
+async function createManager() {
+    const username = document.getElementById('newManagerUsername')?.value?.trim();
+    const email = document.getElementById('newManagerEmail')?.value?.trim();
+    const password = document.getElementById('newManagerPassword')?.value?.trim();
+
+    if (!username || username.length < 3) {
+        alert('❌ Username must be at least 3 characters.');
+        return;
+    }
+    if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+        alert('❌ Please enter a valid email address.');
+        return;
+    }
+    if (!password || password.length < 8) {
+        alert('❌ Password must be at least 8 characters.');
+        return;
     }
 
-    // ---------- PROPERTY USAGE ----------
-    async function updatePropertyUsage(user) {
-        if (currentUserRole !== 'LANDLORD') {
-            document.getElementById('propertyUsage').style.display = 'none';
-            return;
-        }
-        const props = Array.isArray(allProperties) ? allProperties : [];
-        const count = props.length;
-        let max = 5;
-        if (user.subscription === 'PRO') max = 20;
-        else if (user.subscription === 'PREMIUM') max = 100;
-        document.getElementById('propertyUsage').innerText = `Properties: ${count} / ${max}`;
+    const token = localStorage.getItem('jwtToken');
+    if (!token) {
+        alert('❌ You must be logged in as Admin.');
+        return;
     }
 
-    // ---------- WIZARD ----------
-    function nextStep(currentStep) {
-        if (currentStep === 1) {
-            const fullName = document.getElementById('fullName').value.trim();
-            const phone = document.getElementById('phoneNumber').value.trim();
-            if (!fullName || !phone) { alert('Please fill in Name and Phone.'); return; }
-        }
-        if (currentStep === 2) {
-            const prop = document.getElementById('propertySelect').value;
-            const start = document.getElementById('leaseStart').value;
-            const end = document.getElementById('leaseEnd').value;
-            if (!prop || !start || !end) { alert('Please select a property and lease dates.'); return; }
-            if (new Date(end) <= new Date(start)) { alert('End date must be after start date.'); return; }
-        }
-        const currentEl = document.getElementById(`step${currentStep}`);
-        const nextEl = document.getElementById(`step${currentStep + 1}`);
-        if (nextEl) {
-            currentEl.classList.remove('active');
-            nextEl.classList.add('active');
-            document.getElementById('stepIndicator').innerText = currentStep + 1;
-            if (currentStep + 1 === 3) { updateSummary(); }
-        }
-    }
+    try {
+        const res = await fetch('/api/admin/managers', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ username, email, password })
+        });
 
-    function prevStep(currentStep) {
-        const currentEl = document.getElementById(`step${currentStep}`);
-        const prevEl = document.getElementById(`step${currentStep - 1}`);
-        if (prevEl) {
-            currentEl.classList.remove('active');
-            prevEl.classList.add('active');
-            document.getElementById('stepIndicator').innerText = currentStep - 1;
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(err);
         }
-    }
 
-    function updateSummary() {
-        document.getElementById('summary').innerHTML = `
-            <p><strong>Name:</strong> ${document.getElementById('fullName').value}</p>
-            <p><strong>Phone:</strong> ${document.getElementById('phoneNumber').value}</p>
-            <p><strong>Property:</strong> ${document.getElementById('propertySelect').selectedOptions[0]?.text || 'N/A'}</p>
-            <p><strong>Lease:</strong> ${document.getElementById('leaseStart').value} → ${document.getElementById('leaseEnd').value}</p>
-        `;
-    }
+        alert('✅ Manager created successfully!');
+        document.getElementById('newManagerUsername').value = '';
+        document.getElementById('newManagerEmail').value = '';
+        document.getElementById('newManagerPassword').value = '';
 
-    document.getElementById('submitTenantBtn').addEventListener('click', async function() {
+        if (typeof allManagers !== 'undefined' && typeof renderAdminHome === 'function') {
+            allManagers = await apiCall('/admin/managers');
+            renderAdminHome();
+        }
+    } catch (e) {
+        console.error('❌ Error creating manager:', e);
+        alert('❌ Failed to create manager: ' + e.message);
+    }
+}
+
+// ============================================================
+// PROPERTY USAGE
+// ============================================================
+async function updatePropertyUsage(user) {
+    if (currentUserRole !== 'LANDLORD') {
+        document.getElementById('propertyUsage').style.display = 'none';
+        return;
+    }
+    const props = Array.isArray(allProperties) ? allProperties : [];
+    const count = props.length;
+    let max = 5;
+    if (user.subscription === 'PRO') max = 20;
+    else if (user.subscription === 'PREMIUM') max = 100;
+    document.getElementById('propertyUsage').innerText = `Properties: ${count} / ${max}`;
+}
+
+// ============================================================
+// WIZARD
+// ============================================================
+function nextStep(currentStep) {
+    if (currentStep === 1) {
         const fullName = document.getElementById('fullName').value.trim();
         const phone = document.getElementById('phoneNumber').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const propId = document.getElementById('propertySelect').value;
+        if (!fullName || !phone) { alert('Please fill in Name and Phone.'); return; }
+    }
+    if (currentStep === 2) {
+        const prop = document.getElementById('propertySelect').value;
         const start = document.getElementById('leaseStart').value;
         const end = document.getElementById('leaseEnd').value;
+        if (!prop || !start || !end) { alert('Please select a property and lease dates.'); return; }
+        if (new Date(end) <= new Date(start)) { alert('End date must be after start date.'); return; }
+    }
+    const currentEl = document.getElementById(`step${currentStep}`);
+    const nextEl = document.getElementById(`step${currentStep + 1}`);
+    if (nextEl) {
+        currentEl.classList.remove('active');
+        nextEl.classList.add('active');
+        document.getElementById('stepIndicator').innerText = currentStep + 1;
+        if (currentStep + 1 === 3) { updateSummary(); }
+    }
+}
 
-        const username = fullName.toLowerCase().replace(/\s+/g, '_') + Math.floor(Math.random()*1000);
-        const password = 'pass123';
+function prevStep(currentStep) {
+    const currentEl = document.getElementById(`step${currentStep}`);
+    const prevEl = document.getElementById(`step${currentStep - 1}`);
+    if (prevEl) {
+        currentEl.classList.remove('active');
+        prevEl.classList.add('active');
+        document.getElementById('stepIndicator').innerText = currentStep - 1;
+    }
+}
 
-        const tenantDto = { username, password, email };
-        const tenantResult = await apiCall('/manager/create-tenant', 'POST', tenantDto);
-        if (tenantResult.error) { alert('Failed to create tenant: ' + tenantResult.error); return; }
+function updateSummary() {
+    document.getElementById('summary').innerHTML = `
+        <p><strong>Name:</strong> ${document.getElementById('fullName').value}</p>
+        <p><strong>Phone:</strong> ${document.getElementById('phoneNumber').value}</p>
+        <p><strong>Property:</strong> ${document.getElementById('propertySelect').selectedOptions[0]?.text || 'N/A'}</p>
+        <p><strong>Lease:</strong> ${document.getElementById('leaseStart').value} → ${document.getElementById('leaseEnd').value}</p>
+    `;
+}
 
-        const tenants = await apiCall('/manager/my-tenants');
-        const newTenant = tenants.find(t => t.username === username);
-        if (!newTenant) { alert('Tenant created but could not assign lease.'); return; }
+// ============================================================
+// 🔴 FIXED: submitTenantBtn with secure password + lease dates
+// ============================================================
+function generateSecurePassword(length = 12) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+}
 
-        const leaseResult = await apiCall(`/manager/assign-lease?tenantId=${newTenant.id}&propertyId=${propId}`, 'POST');
-        if (leaseResult.error) { alert('Failed to assign lease: ' + leaseResult.error); return; }
+document.getElementById('submitTenantBtn').addEventListener('click', async function() {
+    const fullName = document.getElementById('fullName').value.trim();
+    const phone = document.getElementById('phoneNumber').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const propId = document.getElementById('propertySelect').value;
+    const start = document.getElementById('leaseStart').value;
+    const end = document.getElementById('leaseEnd').value;
 
-        alert('Tenant created and lease assigned successfully!');
-        document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
-        document.getElementById('step1').classList.add('active');
-        document.getElementById('stepIndicator').innerText = '1';
-        document.getElementById('fullName').value = '';
-        document.getElementById('phoneNumber').value = '';
-        document.getElementById('email').value = '';
-        document.getElementById('propertySelect').value = '';
-        document.getElementById('leaseStart').value = '';
-        document.getElementById('leaseEnd').value = '';
-        await loadAllData(null);
-        switchView('view-tenants');
-    });
+    if (!fullName || !phone || !propId || !start || !end) {
+        alert('❌ Please fill in all required fields.');
+        return;
+    }
 
-    // ---------- ADD PROPERTY ----------
-    async function addPropertyFromMenu() {
-        const address = document.getElementById('pAddr').value.trim();
-        const city = document.getElementById('pCity').value.trim();
-        const rent = parseFloat(document.getElementById('pRent').value);
-        if(!address || !city || isNaN(rent)) { alert("Please fill all property fields."); return; }
-        const dto = { address: address, city: city, monthlyRent: rent };
-        const result = await apiCall('/manager/create-property', 'POST', dto);
-        if(result.error) alert("Error adding property: " + result.error);
-        else {
-            alert("Property added!");
-            document.getElementById('pAddr').value = '';
-            document.getElementById('pCity').value = '';
-            document.getElementById('pRent').value = '';
-            allProperties = await apiCall('/manager/my-properties');
-            renderPropertiesTable();
-            renderDashboard();
-            populatePropertyDropdown();
+    const username = fullName.toLowerCase().replace(/\s+/g, '_') + Math.floor(Math.random()*1000);
+    const password = generateSecurePassword(); // ✅ SECURE (not 'pass123')
+
+    const tenantDto = { username, password, email };
+    const tenantResult = await apiCall('/manager/create-tenant', 'POST', tenantDto);
+    if (tenantResult.error) { alert('Failed to create tenant: ' + tenantResult.error); return; }
+
+    const tenants = await apiCall('/manager/my-tenants');
+    const newTenant = tenants.find(t => t.username === username);
+    if (!newTenant) { alert('Tenant created but could not assign lease.'); return; }
+
+    // ✅ FIXED: Pass start and end dates to backend
+    const leaseResult = await apiCall(
+        `/manager/assign-lease?tenantId=${newTenant.id}&propertyId=${propId}&startDate=${start}&endDate=${end}`, 
+        'POST'
+    );
+    if (leaseResult.error) { alert('Failed to assign lease: ' + leaseResult.error); return; }
+
+    alert('✅ Tenant created and lease assigned successfully!');
+    document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+    document.getElementById('step1').classList.add('active');
+    document.getElementById('stepIndicator').innerText = '1';
+    document.getElementById('fullName').value = '';
+    document.getElementById('phoneNumber').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('propertySelect').value = '';
+    document.getElementById('leaseStart').value = '';
+    document.getElementById('leaseEnd').value = '';
+    await loadAllData(null);
+    switchView('view-tenants');
+});
+
+// ============================================================
+// ADD PROPERTY
+// ============================================================
+async function addPropertyFromMenu() {
+    const address = document.getElementById('pAddr').value.trim();
+    const city = document.getElementById('pCity').value.trim();
+    const rent = parseFloat(document.getElementById('pRent').value);
+    if(!address || !city || isNaN(rent)) { alert("Please fill all property fields."); return; }
+    const dto = { address: address, city: city, monthlyRent: rent };
+    const result = await apiCall('/manager/create-property', 'POST', dto);
+    if(result.error) alert("Error adding property: " + result.error);
+    else {
+        alert("✅ Property added!");
+        document.getElementById('pAddr').value = '';
+        document.getElementById('pCity').value = '';
+        document.getElementById('pRent').value = '';
+        allProperties = await apiCall('/manager/my-properties');
+        renderPropertiesTable();
+        renderDashboard();
+        populatePropertyDropdown();
+    }
+}
+
+// ============================================================
+// POPULATE DROPDOWN
+// ============================================================
+function populatePropertyDropdown() {
+    const sel = document.getElementById('propertySelect');
+    const props = Array.isArray(allProperties) ? allProperties : [];
+    sel.innerHTML = '<option value="">— Choose a property —</option>';
+    props.forEach(p => {
+        if (!p.occupied) {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.address + ' (KES ' + p.monthlyRent + ')';
+            sel.appendChild(opt);
         }
-    }
+    });
+}
 
-    // ---------- POPULATE DROPDOWN ----------
-    function populatePropertyDropdown() {
-        const sel = document.getElementById('propertySelect');
-        const props = Array.isArray(allProperties) ? allProperties : [];
-        sel.innerHTML = '<option value="">— Choose a property —</option>';
-        props.forEach(p => {
-            if (!p.occupied) {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.textContent = p.address + ' (KES ' + p.monthlyRent + ')';
-                sel.appendChild(opt);
-            }
-        });
-    }
-
-    // ---------- MISC ----------
-    function normalizePhone(id) {
-        const inp = document.getElementById(id);
-        let val = inp.value.replace(/\D/g, '');
-        if (val.length > 9) val = val.substring(0, 9);
-        inp.value = val;
-    }
+// ============================================================
+// MISC
+// ============================================================
+function normalizePhone(id) {
+    const inp = document.getElementById(id);
+    let val = inp.value.replace(/\D/g, '');
+    if (val.length > 9) val = val.substring(0, 9);
+    inp.value = val;
+}
 </script>
 </body>
 </html>

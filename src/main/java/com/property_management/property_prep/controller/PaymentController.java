@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,12 +57,10 @@ public class PaymentController {
         LeaseAgreement lease = leaseRepository.findById(leaseId)
                 .orElseThrow(() -> new RuntimeException("Lease not found"));
 
-        // Verify the tenant is the one who owns the lease
         if (!lease.getTenant().getId().equals(tenant.getId())) {
             throw new RuntimeException("You are not the tenant for this lease");
         }
 
-        // Create a new payment record
         Payment payment = new Payment();
         payment.setLease(lease);
         payment.setAmount(lease.getProperty().getMonthlyRent());
@@ -89,7 +86,7 @@ public class PaymentController {
     }
 
     // ==========================================
-    // 2. STRIPE WEBHOOK (Called by Stripe) - BUG FIXED
+    // 2. STRIPE WEBHOOK (Called by Stripe)
     // ==========================================
     @PostMapping("/stripe-webhook")
     public ResponseEntity<String> handleStripeWebhook(@RequestBody String payload) {
@@ -97,20 +94,17 @@ public class PaymentController {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(payload);
 
-            // Check if it's a successful payment intent
             if (root.has("type") && "payment_intent.succeeded".equals(root.get("type").asText())) {
                 JsonNode intent = root.get("data").get("object");
                 String paymentIdStr = intent.get("metadata").get("paymentId").asText();
                 Long paymentId = Long.parseLong(paymentIdStr);
 
-                // Update the database
                 Payment payment = paymentRepository.findById(paymentId)
                         .orElseThrow(() -> new RuntimeException("Payment not found"));
                 payment.setStatus("PAID");
                 payment.setPaidDate(LocalDate.now());
                 paymentRepository.save(payment);
 
-                // Send receipt to tenant
                 String tenantEmail = payment.getLease().getTenant().getEmail();
                 String subject = "🧾 Payment Receipt (Stripe)";
                 String body = String.format(
@@ -144,7 +138,6 @@ public class PaymentController {
             throw new RuntimeException("You are not the tenant for this lease");
         }
 
-        // Create a new payment record
         Payment payment = new Payment();
         payment.setLease(lease);
         payment.setAmount(lease.getProperty().getMonthlyRent());
@@ -162,7 +155,7 @@ public class PaymentController {
     }
 
     // ==========================================
-    // 4. M-PESA CALLBACK (Called by Safaricom) - BUG FIXED
+    // 4. M-PESA CALLBACK (Called by Safaricom)
     // ==========================================
     @PostMapping("/mpesa/callback")
     public ResponseEntity<String> mpesaCallback(@RequestBody String callbackData) {
@@ -170,31 +163,27 @@ public class PaymentController {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(callbackData);
 
-            // Safaricom returns a nested structure. We check for ResultCode.
             if (root.has("Body") && root.get("Body").has("stkCallback")) {
                 JsonNode callback = root.get("Body").get("stkCallback");
                 int resultCode = callback.get("ResultCode").asInt();
 
-                if (resultCode == 0) { // 0 means success
-                    String accountRef = callback.get("AccountReference").asText(); // format: "Lease-{leaseId}"
+                if (resultCode == 0) {
+                    String accountRef = callback.get("AccountReference").asText();
                     String leaseIdStr = accountRef.replace("Lease-", "");
                     Long leaseId = Long.parseLong(leaseIdStr);
 
-                    // Find the lease
                     LeaseAgreement lease = leaseRepository.findById(leaseId)
                             .orElseThrow(() -> new RuntimeException("Lease not found"));
 
-                    // Find the latest pending M-PESA payment for this lease
                     List<Payment> pendingPayments = paymentRepository
                             .findByLeaseAndPaymentMethodAndStatus(lease, "MPESA", "PENDING");
 
                     if (!pendingPayments.isEmpty()) {
-                        Payment payment = pendingPayments.get(0); // Get the most recent one
+                        Payment payment = pendingPayments.get(0);
                         payment.setStatus("PAID");
                         payment.setPaidDate(LocalDate.now());
                         paymentRepository.save(payment);
 
-                        // Send receipt to tenant
                         String tenantEmail = lease.getTenant().getEmail();
                         String subject = "🧾 Payment Receipt (M-Pesa)";
                         String body = String.format(
@@ -237,7 +226,6 @@ public class PaymentController {
         payment.setPaymentMethod("CASH");
         payment = paymentRepository.save(payment);
 
-        // Notify manager via email
         User manager = lease.getProperty().getManager();
         String subject = "💰 Cash Payment Request from " + tenant.getUsername();
         String body = String.format(
@@ -262,7 +250,6 @@ public class PaymentController {
             @PathVariable Long paymentId,
             @AuthenticationPrincipal User manager) {
 
-        // Verify manager has proper role
         if (manager.getRole() != RoleType.LANDLORD) {
             throw new RuntimeException("Access Denied: Only landlords can confirm cash payments.");
         }
@@ -270,18 +257,15 @@ public class PaymentController {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
 
-        // Verify the manager owns the property
         Property property = payment.getLease().getProperty();
         if (!property.getManager().getId().equals(manager.getId())) {
             throw new RuntimeException("You are not the manager for this property");
         }
 
-        // Update status
         payment.setStatus("PAID");
         payment.setPaidDate(LocalDate.now());
         paymentRepository.save(payment);
 
-        // Send receipts
         String tenantEmail = payment.getLease().getTenant().getEmail();
         String managerEmail = manager.getEmail();
         String subject = "🧾 Cash Payment Confirmed";
@@ -305,7 +289,7 @@ public class PaymentController {
     }
 
     // ==========================================
-    // 7. GET PENDING CASH PAYMENTS (Manager)
+    // 7. GET PENDING CASH PAYMENTS (Manager) - 🚀 OPTIMIZED
     // ==========================================
     @GetMapping("/cash-pending")
     public ResponseEntity<List<Payment>> getPendingCashPayments(@AuthenticationPrincipal User manager) {
@@ -313,18 +297,8 @@ public class PaymentController {
             throw new RuntimeException("Access Denied: Only landlords can view pending cash payments.");
         }
 
-        List<Property> myProps = propertyRepository.findByManager(manager);
-        List<LeaseAgreement> myLeases = new ArrayList<>();
-        for (Property prop : myProps) {
-            myLeases.addAll(leaseRepository.findByProperty(prop));
-        }
-
-        List<Payment> cashPayments = new ArrayList<>();
-        for (LeaseAgreement lease : myLeases) {
-            cashPayments.addAll(
-                    paymentRepository.findByLeaseAndPaymentMethodAndStatus(lease, "CASH", "PENDING")
-            );
-        }
+        // 🚀 REPLACED 3 NESTED LOOPS WITH A SINGLE JPQL QUERY
+        List<Payment> cashPayments = paymentRepository.findPendingCashPaymentsByManager(manager);
         return ResponseEntity.ok(cashPayments);
     }
 
